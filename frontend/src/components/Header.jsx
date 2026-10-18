@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, User, ShoppingBag, Menu, X, Shield, Package, UserCheck, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
@@ -19,6 +20,7 @@ export default function Header({
   onOpenProfile,
   onOpenAdminDashboard,
 }) {
+  const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { cartCount, openBag } = useCart();
 
@@ -170,7 +172,11 @@ export default function Header({
                           <button
                             onClick={() => {
                               setDropdownOpen(false);
-                              onOpenAdminDashboard?.();
+                              if (onOpenAdminDashboard) {
+                                onOpenAdminDashboard();
+                              } else {
+                                navigate('/admin');
+                              }
                             }}
                             className="w-full text-left px-4 py-2 hover:bg-white/10 flex items-center gap-2.5 text-white font-semibold transition-colors border-t border-white/10 mt-1 pt-2"
                           >
@@ -193,13 +199,13 @@ export default function Header({
                   )}
                 </div>
               ) : (
-                <button
-                  onClick={onLoginClick}
+                <Link
+                  to="/signin"
                   className="hidden sm:flex items-center gap-2 hover:text-white/70 transition-colors text-xs tracking-wide"
                 >
                   <User size={20} strokeWidth={1.5} />
                   <span className="hidden md:inline uppercase tracking-widest text-[11px]">SIGN IN / REGISTER</span>
-                </button>
+                </Link>
               )}
 
               {/* Shopping Bag Button with Badge */}
@@ -242,7 +248,11 @@ export default function Header({
                         <button
                           onClick={() => {
                             setMobileMenuOpen(false);
-                            onOpenAdminDashboard?.();
+                            if (onOpenAdminDashboard) {
+                              onOpenAdminDashboard();
+                            } else {
+                              navigate('/admin');
+                            }
                           }}
                           className="text-xs text-white/80 underline flex items-center gap-1"
                         >
@@ -275,16 +285,14 @@ export default function Header({
                     </div>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      onLoginClick?.();
-                    }}
-                    className="flex items-center gap-2 text-xs tracking-wide hover:text-white/70"
+                  <Link
+                    to="/signin"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2 pt-4 border-t border-white/10 text-xs tracking-wide hover:text-white/70 transition-colors"
                   >
                     <User size={18} strokeWidth={1.5} />
                     <span>SIGN IN / REGISTER</span>
-                  </button>
+                  </Link>
                 )}
               </div>
             </nav>
