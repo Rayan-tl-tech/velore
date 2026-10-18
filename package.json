@@ -1,0 +1,17 @@
+{
+  "name": "final-project-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack E-Commerce project with Express backend and React frontend",
+  "scripts": {
+    "dev": "concurrently -n BACKEND,FRONTEND -c blue,magenta \"npm run backend\" \"npm run frontend\"",
+    "frontend": "npm --prefix frontend run dev",
+    "backend": "npm --prefix backend run dev",
+    "backend:start": "npm --prefix backend start",
+    "test:backend": "npm --prefix backend run test:api",
+    "build": "npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
