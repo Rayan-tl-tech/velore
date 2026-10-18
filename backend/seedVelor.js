@@ -12,7 +12,7 @@ const velorProducts = [
     price: 6900,
     categoryName: "Women",
     description: "Tailored silhouette in breathable cotton with structured collar and mother-of-pearl buttons.",
-    image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop",
+    image: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=800&h=1000&fit=crop",
     stock: 30,
   },
   {
@@ -52,7 +52,7 @@ const velorProducts = [
     price: 4500,
     categoryName: "Women",
     description: "Ultra-soft micro-rib modal knit designed for clean layering and daily comfort.",
-    image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop",
+    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1000&fit=crop",
     stock: 40,
   },
   {
