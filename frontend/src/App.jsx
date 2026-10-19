@@ -11,7 +11,12 @@ import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import SignIn from './components/SignIn';
 import SignUp from './components/SignUp';
-import AdminDashboard from './pages/AdminDashboard';
+import Overview from './components/admin/Overview';
+import Products from './components/admin/Products';
+import Orders from './components/admin/Orders';
+import Customers from './components/admin/Customers';
+import Categories from './components/admin/Categories';
+import Settings from './components/admin/Settings';
 import ShoppingBagDrawer from './components/cart/ShoppingBagDrawer';
 import ProductDetailModal from './components/catalog/ProductDetailModal';
 import OrdersModal from './components/orders/OrdersModal';
@@ -119,19 +124,6 @@ function HomePage({
   );
 }
 
-function AdminRoute({ onShowToast }) {
-  const navigate = useNavigate();
-  return (
-    <AdminDashboard
-      onNavigate={(page) => {
-        if (page === 'shop') navigate('/');
-        else if (page === 'auth') navigate('/signin');
-      }}
-      onShowToast={onShowToast}
-    />
-  );
-}
-
 function MainLayout() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
@@ -181,7 +173,12 @@ function MainLayout() {
         />
         <Route path="/signin" element={<SignIn onShowToast={showToast} />} />
         <Route path="/register" element={<SignUp onShowToast={showToast} />} />
-        <Route path="/admin" element={<AdminRoute onShowToast={showToast} />} />
+        <Route path="/admin" element={<Overview />} />
+        <Route path="/admin/products" element={<Products />} />
+        <Route path="/admin/orders" element={<Orders />} />
+        <Route path="/admin/customers" element={<Customers />} />
+        <Route path="/admin/categories" element={<Categories />} />
+        <Route path="/admin/settings" element={<Settings />} />
       </Routes>
 
       {/* Shopping Bag Drawer (Cart & Algerian Checkout) */}
