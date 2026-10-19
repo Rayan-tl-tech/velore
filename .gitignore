@@ -28,5 +28,6 @@ backend/uploads/.gitkeep
 .DS_Store
 Thumbs.db
 desktop.ini
-.vscode/
+.vscode/*
+!.vscode/settings.json
 .idea/
