@@ -73,7 +73,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('user');
   }, []);
 
-  const isAdmin = user?.roles?.includes('admin') ?? false;
+  const isAdmin = (user?.roles?.includes('admin') || user?.role === 'admin') ?? false;
   const isAuthenticated = !!token && !!user;
 
   return (
