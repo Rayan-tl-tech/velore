@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
+import dns from 'dns';
+try { dns.setServers(['8.8.8.8', '1.1.1.1']); } catch {}
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import Category from './models/categoryModel.js';
@@ -76,7 +78,7 @@ const velorProducts = [
 async function seed() {
   try {
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI, { dbName: 'ecommerce' });
     console.log('Connected to MongoDB.');
 
     // 1. Seed or Verify Users
