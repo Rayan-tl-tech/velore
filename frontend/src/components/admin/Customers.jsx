@@ -144,7 +144,22 @@ export default function Customers() {
               </tr>
             </thead>
             <tbody>
-              {filteredCustomers.length === 0 ? (
+              {loading && users.length === 0 ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#E8E8E8] animate-pulse">
+                    <td className="py-4 px-6 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#EFEFEF]"></div>
+                      <div className="h-4 w-28 bg-[#EFEFEF]"></div>
+                    </td>
+                    <td className="py-4 px-6"><div className="h-4 w-36 bg-[#EFEFEF]"></div></td>
+                    <td className="py-4 px-6"><div className="h-4 w-24 bg-[#EFEFEF]"></div></td>
+                    <td className="py-4 px-6"><div className="h-5 w-16 bg-[#EFEFEF] rounded-full"></div></td>
+                    <td className="py-4 px-6"><div className="h-4 w-8 bg-[#EFEFEF]"></div></td>
+                    <td className="py-4 px-6"><div className="h-4 w-20 bg-[#EFEFEF]"></div></td>
+                    <td className="py-4 px-6"><div className="h-4 w-20 bg-[#EFEFEF]"></div></td>
+                  </tr>
+                ))
+              ) : filteredCustomers.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-sm text-[#666]">
                     No customer accounts found matching query.

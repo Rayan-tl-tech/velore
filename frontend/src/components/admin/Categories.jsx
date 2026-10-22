@@ -129,7 +129,24 @@ export default function Categories() {
 
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {categories.map((cat) => {
+        {loading && categories.length === 0 ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="bg-white border border-[#E8E8E8] p-6 animate-pulse">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 bg-[#EFEFEF]"></div>
+                <div className="space-y-2 flex-1">
+                  <div className="h-6 w-28 bg-[#EFEFEF]"></div>
+                  <div className="h-3 w-16 bg-[#F5F5F5]"></div>
+                </div>
+              </div>
+              <div className="pt-4 border-t border-[#F0F0F0] flex justify-between">
+                <div className="h-3 w-16 bg-[#EFEFEF]"></div>
+                <div className="h-4 w-12 bg-[#EFEFEF]"></div>
+              </div>
+            </div>
+          ))
+        ) : (
+          categories.map((cat) => {
           const prodsInCat = products.filter((p) => {
             const catId = typeof p.category === 'object' ? p.category?._id : p.category;
             const catName = typeof p.category === 'object' ? p.category?.name : p.category;
@@ -166,7 +183,8 @@ export default function Categories() {
               </div>
             </div>
           );
-        })}
+        })
+      )}
       </div>
     </AdminLayout>
   );

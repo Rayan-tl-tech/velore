@@ -356,7 +356,20 @@ export default function Products() {
 
       {/* Main Content: Card Grid View or Table View */}
       {viewMode === 'grid' ? (
-        filteredProducts.length === 0 ? (
+        loading && products.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white border border-[#E8E8E8] flex flex-col animate-pulse">
+                <div className="aspect-[3/4] bg-[#EFEFEF]"></div>
+                <div className="p-5 space-y-3">
+                  <div className="h-4 w-3/4 bg-[#EFEFEF]"></div>
+                  <div className="h-3 w-1/3 bg-[#F5F5F5]"></div>
+                  <div className="h-4 w-1/4 bg-[#EFEFEF] pt-2"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="bg-white border border-[#E8E8E8] p-12 text-center my-6">
             <p className="font-serif-display text-2xl text-[#0A0A0A] mb-2">No pieces in this inventory category</p>
             <p className="text-xs text-[#666] mb-6">
@@ -473,7 +486,25 @@ export default function Products() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProducts.length === 0 ? (
+                {loading && products.length === 0 ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <tr key={i} className="border-b border-[#E8E8E8] animate-pulse">
+                      <td className="py-4 px-6 flex items-center gap-4">
+                        <div className="w-16 h-20 bg-[#EFEFEF]"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-[#EFEFEF]"></div>
+                          <div className="h-3 w-20 bg-[#F5F5F5]"></div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6"><div className="h-4 w-20 bg-[#EFEFEF]"></div></td>
+                      <td className="py-4 px-6"><div className="h-4 w-16 bg-[#EFEFEF]"></div></td>
+                      <td className="py-4 px-6"><div className="h-4 w-12 bg-[#EFEFEF]"></div></td>
+                      <td className="py-4 px-6"><div className="h-6 w-16 bg-[#EFEFEF] rounded"></div></td>
+                      <td className="py-4 px-6"><div className="h-4 w-16 bg-[#EFEFEF]"></div></td>
+                      <td className="py-4 px-6 text-right"><div className="h-7 w-20 bg-[#EFEFEF] ml-auto"></div></td>
+                    </tr>
+                  ))
+                ) : filteredProducts.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-sm text-[#666]">
                       No products matched your filters.

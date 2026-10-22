@@ -368,7 +368,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
 
                     <button
                       onClick={handleProceedToCheckout}
-                      className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                      className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-lg"
                     >
                       <span>Proceed to Checkout</span>
                       <ArrowRight size={14} />
@@ -576,7 +576,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                 <button
                   type="submit"
                   disabled={checkoutLoading}
-                  className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-70 mt-2"
+                  className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-70 mt-2"
                 >
                   {checkoutLoading ? (
                     <>
@@ -593,7 +593,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
 
           {/* CONTENT: SUCCESS RECEIPT VIEW */}
           {drawerMode === 'success' && placedOrder && (
-            <div className="flex-1 flex flex-col p-8 overflow-y-auto text-center justify-between">
+            <div className="flex-1 flex flex-col p-8 overflow-y-auto text-center justify-between animate-admin-view">
               <div className="py-6">
                 <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200">
                   <CheckCircle2 size={32} />
@@ -635,7 +635,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
 
               <button
                 onClick={closeBag}
-                className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] transition-colors cursor-pointer"
+                className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 cursor-pointer"
               >
                 Continuer mes achats
               </button>

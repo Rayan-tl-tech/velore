@@ -184,7 +184,23 @@ export default function Orders() {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length === 0 ? (
+              {loading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={i} className="border-b border-[#E8E8E8] animate-pulse">
+                    <td className="py-5 px-6"><div className="h-4 w-16 bg-[#EFEFEF]"></div></td>
+                    <td className="py-5 px-6">
+                      <div className="h-4 w-32 bg-[#EFEFEF] mb-1.5"></div>
+                      <div className="h-3 w-24 bg-[#F5F5F5]"></div>
+                    </td>
+                    <td className="py-5 px-6"><div className="h-4 w-20 bg-[#EFEFEF]"></div></td>
+                    <td className="py-5 px-6"><div className="h-4 w-14 bg-[#EFEFEF]"></div></td>
+                    <td className="py-5 px-6"><div className="h-4 w-20 bg-[#EFEFEF]"></div></td>
+                    <td className="py-5 px-6"><div className="h-4 w-24 bg-[#EFEFEF]"></div></td>
+                    <td className="py-5 px-6"><div className="h-6 w-20 bg-[#EFEFEF] rounded"></div></td>
+                    <td className="py-5 px-6 text-right"><div className="h-7 w-16 bg-[#EFEFEF] ml-auto"></div></td>
+                  </tr>
+                ))
+              ) : filteredOrders.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-sm text-[#666]">
                     No orders matched your search criteria.

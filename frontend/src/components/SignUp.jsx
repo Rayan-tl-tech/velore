@@ -187,7 +187,7 @@ export default function SignUp({ onShowToast }) {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] transition-colors mt-4 disabled:opacity-50 cursor-pointer"
+          className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[1px] active:scale-[0.99] transition-all duration-150 mt-4 disabled:opacity-50 cursor-pointer"
         >
           {submitting ? 'Creating Account...' : 'Create Account'}
         </button>

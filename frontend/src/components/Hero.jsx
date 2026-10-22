@@ -59,7 +59,7 @@ export default function Hero() {
               transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
               transitionDelay: '240ms',
             }}
-            className={`bg-white text-[#0A0A0A] px-8 py-4 text-xs sm:text-sm tracking-[0.2em] uppercase font-medium hover:bg-white/90 transition-all duration-300 inline-flex items-center gap-3 cursor-pointer transform ${
+            className={`bg-white text-[#0A0A0A] px-8 py-4 text-xs sm:text-sm tracking-[0.2em] uppercase font-medium hover:bg-white/90 hover:-translate-y-[1px] active:scale-[0.99] transition-all duration-150 inline-flex items-center gap-3 cursor-pointer transform ${
               mounted ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'
             }`}
           >

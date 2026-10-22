@@ -232,11 +232,11 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
               id="add-to-bag-modal-btn"
               onClick={handleAddToCart}
               disabled={outOfStock || adding}
-              className={`w-full py-4 text-xs tracking-[0.2em] uppercase font-medium flex items-center justify-center gap-2 transition-all cursor-pointer
+              className={`w-full py-4 text-xs tracking-[0.2em] uppercase font-medium flex items-center justify-center gap-2 transition-all duration-150 cursor-pointer
                 ${
                   outOfStock
                     ? 'bg-[#E8E8E8] text-[#999] cursor-not-allowed'
-                    : 'bg-[#0A0A0A] text-white hover:bg-[#333333]'
+                    : 'bg-[#0A0A0A] text-white hover:bg-[#333333] hover:-translate-y-[1px] active:scale-[0.99]'
                 }`}
             >
               {adding ? (

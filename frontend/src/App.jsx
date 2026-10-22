@@ -22,6 +22,7 @@ import ProductDetailModal from './components/catalog/ProductDetailModal';
 import OrdersModal from './components/orders/OrdersModal';
 import ProfileModal from './components/profile/ProfileModal';
 import { useToast } from './components/ui/useToast';
+import ScrollReveal from './components/ui/ScrollReveal';
 import { products } from './data/products';
 import { getAllProducts } from './services/api/productService';
 
@@ -75,52 +76,63 @@ function HomePage({
 
       <main>
         <Hero />
-        <CategoryCards />
+
+        <ScrollReveal>
+          <CategoryCards />
+        </ScrollReveal>
 
         <section id="new-arrivals">
-          <CollectionSection
-            label="Fresh Perspective"
-            title="New arrivals"
-            products={newArrivals}
-            onProductClick={onProductClick}
-            onShowToast={onShowToast}
-          />
+          <ScrollReveal>
+            <CollectionSection
+              label="Fresh Perspective"
+              title="New arrivals"
+              products={newArrivals}
+              onProductClick={onProductClick}
+              onShowToast={onShowToast}
+            />
+          </ScrollReveal>
         </section>
 
         <section id="men" className="bg-[#F7F6F2]">
-          <CollectionSection
-            label="Collection / 01"
-            title="Men's collection"
-            description="Clean proportions, practical layers, and everyday pieces with a precise point of view."
-            products={menProducts}
-            onProductClick={onProductClick}
-            onShowToast={onShowToast}
-          />
+          <ScrollReveal>
+            <CollectionSection
+              label="Collection / 01"
+              title="Men's collection"
+              description="Clean proportions, practical layers, and everyday pieces with a precise point of view."
+              products={menProducts}
+              onProductClick={onProductClick}
+              onShowToast={onShowToast}
+            />
+          </ScrollReveal>
         </section>
 
         <section id="women">
-          <CollectionSection
-            title="Women's collection"
-            description="Fluid tailoring and modern essentials designed for a versatile wardrobe."
-            products={womenProducts}
-            onProductClick={onProductClick}
-            onShowToast={onShowToast}
-          />
+          <ScrollReveal>
+            <CollectionSection
+              title="Women's collection"
+              description="Fluid tailoring and modern essentials designed for a versatile wardrobe."
+              products={womenProducts}
+              onProductClick={onProductClick}
+              onShowToast={onShowToast}
+            />
+          </ScrollReveal>
         </section>
 
         <section id="kids" className="bg-[#F7F6F2]">
-          <CollectionSection
-            label="Collection / 03"
-            title="Kids' collection"
-            description="Comfortable, durable pieces with freedom to move and a refined sense of simplicity."
-            products={kidsProducts}
-            onProductClick={onProductClick}
-            onShowToast={onShowToast}
-          />
+          <ScrollReveal>
+            <CollectionSection
+              label="Collection / 03"
+              title="Kids' collection"
+              description="Comfortable, durable pieces with freedom to move and a refined sense of simplicity."
+              products={kidsProducts}
+              onProductClick={onProductClick}
+              onShowToast={onShowToast}
+            />
+          </ScrollReveal>
         </section>
 
         {/* Section: About VÉLOR */}
-        <section id="about" className="py-24 lg:py-32 bg-white border-t border-[#E8E8E8]">
+        <ScrollReveal as="section" id="about" className="py-24 lg:py-32 bg-white border-t border-[#E8E8E8]">
           <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
               <div>
@@ -144,10 +156,15 @@ function HomePage({
               </div>
             </div>
           </div>
-        </section>
+        </ScrollReveal>
 
-        <LocationSection />
-        <ContactSection />
+        <ScrollReveal>
+          <LocationSection />
+        </ScrollReveal>
+
+        <ScrollReveal>
+          <ContactSection />
+        </ScrollReveal>
       </main>
 
       <Footer />
