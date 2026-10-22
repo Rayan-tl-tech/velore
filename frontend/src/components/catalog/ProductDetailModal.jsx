@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ShoppingBag, Plus, Minus, Loader2, Check } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { formatPrice } from '../../data/products';
@@ -9,6 +9,46 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState(product?.sizes?.[0] || 'M');
   const [adding, setAdding] = useState(false);
+
+  // Animation Lifecycle: enter → visible → exit → unmount
+  const [visible, setVisible] = useState(false);
+  const isClosingRef = useRef(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      setVisible(true);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const handleRequestClose = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 240);
+  }, [onClose]);
+
+  // Keyboard accessibility: Escape key closes modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleRequestClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleRequestClose]);
+
+  // Lock background body scroll
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   if (!product) return null;
 
@@ -26,7 +66,7 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
     try {
       await addToCart(productId, quantity, true, { size: selectedSize, product });
       onShowToast?.(`Added ${quantity} × "${product.name}" (Size ${selectedSize}) to your bag!`);
-      onClose();
+      handleRequestClose();
     } catch (err) {
       onShowToast?.(err.message || 'Failed to add to bag', 'error');
     } finally {
@@ -35,18 +75,34 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans-body"
+      role="dialog"
+      aria-modal="true"
+      aria-label={product.name}
+    >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-[240ms] ease-out cursor-pointer ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleRequestClose}
       />
 
       {/* Modal Card */}
-      <div className="relative bg-white rounded-none shadow-2xl w-full max-w-3xl overflow-hidden z-10 flex flex-col md:flex-row max-h-[92vh] border border-[#E8E8E8]">
+      <div
+        style={{
+          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+        className={`relative bg-white rounded-none shadow-2xl w-full max-w-3xl overflow-hidden z-10 flex flex-col md:flex-row max-h-[92vh] border border-[#E8E8E8] transform transition-[transform,opacity] duration-[240ms] ${
+          visible
+            ? 'opacity-100 scale-100 translate-y-0'
+            : 'opacity-0 scale-[0.98] translate-y-1'
+        }`}
+      >
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={handleRequestClose}
           className="absolute top-4 right-4 z-20 p-2 text-[#0A0A0A] hover:bg-[#F7F6F2] transition-colors cursor-pointer"
           aria-label="Close modal"
         >
@@ -173,6 +229,7 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
             )}
 
             <button
+              id="add-to-bag-modal-btn"
               onClick={handleAddToCart}
               disabled={outOfStock || adding}
               className={`w-full py-4 text-xs tracking-[0.2em] uppercase font-medium flex items-center justify-center gap-2 transition-all cursor-pointer

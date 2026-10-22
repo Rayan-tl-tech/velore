@@ -4,6 +4,7 @@ export const products = [
   // =========================================================
   {
     id: 1,
+    _id: "6ad7ade42db46fce4749c244",
     name: "Essential Structured Shirt",
     price: 6900,
     category: "Women",
@@ -16,6 +17,7 @@ export const products = [
   },
   {
     id: 2,
+    _id: "6ad7ade42db46fce4749c245",
     name: "Relaxed Cotton Overshirt",
     price: 7400,
     category: "Men",
@@ -28,6 +30,7 @@ export const products = [
   },
   {
     id: 3,
+    _id: "6ad7ade42db46fce4749c246",
     name: "Tailored Wool-Blend Coat",
     price: 14800,
     category: "Women",
@@ -40,6 +43,7 @@ export const products = [
   },
   {
     id: 4,
+    _id: "6ad7ade42db46fce4749c247",
     name: "Modern Denim Set",
     price: 9800,
     category: "Men",
@@ -56,18 +60,20 @@ export const products = [
   // =========================================================
   {
     id: 5,
+    _id: "6ad7ade42db46fce4749c248",
     name: "Brushed Canvas Overshirt",
     price: 7400,
     category: "Men",
-    subcategory: "Shirts",
+    subcategory: "Overshirts",
     badge: null,
-    colors: ["#4A6B8A", "#2C3E50"],
+    colors: ["#D4CFC9", "#1a1a1a"],
     sizes: ["XS", "S", "M", "L", "XL"],
     image: "https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=800&h=1000&fit=crop",
     collection: "men",
   },
   {
     id: 6,
+    _id: "6ad7ade42db46fce4749c249",
     name: "Architectural Trench",
     price: 13500,
     category: "Men",
@@ -80,6 +86,7 @@ export const products = [
   },
   {
     id: 7,
+    _id: "6ad7ade42db46fce4749c24a",
     name: "Classic Weekend Jacket",
     price: 11200,
     category: "Men",
@@ -92,6 +99,7 @@ export const products = [
   },
   {
     id: 8,
+    _id: "6ad7ade42db46fce4749c24b",
     name: "Tailored Navy Wool Suit",
     price: 18900,
     category: "Men",
@@ -108,6 +116,7 @@ export const products = [
   // =========================================================
   {
     id: 9,
+    _id: "6ad7ade42db46fce4749c24c",
     name: "Mediterranean Wrap Dress",
     price: 8900,
     category: "Women",
@@ -120,6 +129,7 @@ export const products = [
   },
   {
     id: 10,
+    _id: "6ad7ade42db46fce4749c24d",
     name: "Atelier Ruffle Evening Coat",
     price: 16500,
     category: "Women",
@@ -132,6 +142,7 @@ export const products = [
   },
   {
     id: 11,
+    _id: "6ad7ade42db46fce4749c24e",
     name: "Fine Rib Everyday Top",
     price: 4500,
     category: "Women",
@@ -144,6 +155,7 @@ export const products = [
   },
   {
     id: 12,
+    _id: "6ad7ade52db46fce4749c24f",
     name: "Pleated Summer Poplin Dress",
     price: 7900,
     category: "Women",
@@ -160,6 +172,7 @@ export const products = [
   // =========================================================
   {
     id: 13,
+    _id: "6ad7ade52db46fce4749c250",
     name: "Soft Motion Sweatshirt",
     price: 3900,
     category: "Kids",
@@ -172,6 +185,7 @@ export const products = [
   },
   {
     id: 14,
+    _id: "6ad7ade52db46fce4749c251",
     name: "Mini Everyday Coat",
     price: 6200,
     category: "Kids",
@@ -184,6 +198,7 @@ export const products = [
   },
   {
     id: 15,
+    _id: "6ad7ade52db46fce4749c252",
     name: "Cotton Dot Smock Blouse",
     price: 3500,
     category: "Kids",
@@ -196,6 +211,7 @@ export const products = [
   },
   {
     id: 16,
+    _id: "6ad7ade52db46fce4749c253",
     name: "Denim & Plaid Play Set",
     price: 5400,
     category: "Kids",

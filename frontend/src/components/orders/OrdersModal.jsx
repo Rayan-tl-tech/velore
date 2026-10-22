@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Package, Calendar, Loader2, MapPin, Phone, Truck } from 'lucide-react';
 import { getMyOrders, getAllOrders } from '../../services/api/orderService';
 import { useAuth } from '../../context/AuthContext';
@@ -10,6 +10,60 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Animation Lifecycle: open → enter → visible → exit → unmount
+  const [mounted, setMounted] = useState(isOpen);
+  const [visible, setVisible] = useState(false);
+  const isClosingRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      isClosingRef.current = false;
+      setMounted(true);
+      const raf = requestAnimationFrame(() => {
+        setVisible(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => {
+        setMounted(false);
+      }, 240);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleRequestClose = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 240);
+  }, [onClose]);
+
+  // Keyboard accessibility: Escape key closes modal
+  useEffect(() => {
+    if (!mounted) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleRequestClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mounted, handleRequestClose]);
+
+  // Lock background body scroll
+  useEffect(() => {
+    if (mounted) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [mounted]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -25,7 +79,7 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
       .finally(() => setLoading(false));
   }, [isOpen, isAdminMode, isAdmin]);
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   const formatDate = (isoString) => {
     if (!isoString) return 'Recent';
@@ -77,15 +131,31 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans-body">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans-body"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Order History"
+    >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-[240ms] ease-out cursor-pointer ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleRequestClose}
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white shadow-2xl w-full max-w-3xl overflow-hidden z-10 flex flex-col max-h-[85vh] border border-[#E8E8E8]">
+      <div
+        style={{
+          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+        className={`relative bg-white shadow-2xl w-full max-w-3xl overflow-hidden z-10 flex flex-col max-h-[85vh] border border-[#E8E8E8] transform transition-[transform,opacity] duration-[240ms] ${
+          visible
+            ? 'opacity-100 scale-100 translate-y-0'
+            : 'opacity-0 scale-[0.98] translate-y-1'
+        }`}
+      >
         {/* Header */}
         <div className="p-6 bg-[#0A0A0A] text-white flex items-center justify-between">
           <div className="flex items-center space-x-3">
@@ -104,7 +174,7 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleRequestClose}
             className="p-1 text-white/70 hover:text-white transition-colors cursor-pointer"
             aria-label="Close"
           >

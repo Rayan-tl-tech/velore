@@ -84,7 +84,7 @@ export default function Customers() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <p className="text-base text-[#666]">
-            View live customer profiles and order histories ({users.length} registered accounts in MongoDB).
+            View live customer profiles and order histories ({users.length} registered accounts).
           </p>
         </div>
         <button

@@ -11,9 +11,9 @@ try {
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      dbName: 'ecommerce',
+      dbName: process.env.DB_NAME || 'velor',
     });
-    console.log('✅ Connected to MongoDB Atlas');
+    console.log('✅ Connected to MongoDB Atlas (database: velor)');
   } catch (error) {
     console.error('❌ Error connecting to MongoDB:', error.message || error);
     process.exit(1);

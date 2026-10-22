@@ -91,25 +91,14 @@ export default function Settings() {
           </form>
         </div>
 
-        {/* Database & Infrastructure Live Status */}
+        {/* System & Infrastructure Status */}
         <div className="bg-white border border-[#E8E8E8] p-8 space-y-6">
           <div className="flex items-center gap-3 pb-4 border-b border-[#E8E8E8]">
-            <Database size={20} className="text-[#0A0A0A]" />
-            <h3 className="font-serif-display text-2xl font-normal">Backend & Infrastructure</h3>
+            <Server size={20} className="text-[#0A0A0A]" />
+            <h3 className="font-serif-display text-2xl font-normal">System & Security</h3>
           </div>
 
           <div className="space-y-4 text-xs">
-            <div className="p-4 bg-[#F9F9F9] border border-[#E8E8E8] rounded-sm space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-[#0A0A0A] uppercase tracking-wider">Database Engine</span>
-                <span className="font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[11px] font-semibold">
-                  CONNECTED
-                </span>
-              </div>
-              <p className="text-[#666]">Cluster: <code className="font-mono text-[#0A0A0A]">cluster0.lxedmrr.mongodb.net</code></p>
-              <p className="text-[#666]">Target Database: <code className="font-mono text-[#0A0A0A]">ecommerce</code></p>
-              <p className="text-[#666]">Driver: Mongoose 9.9.3 (SRV DNS Assisted)</p>
-            </div>
 
             <div className="p-4 bg-[#F9F9F9] border border-[#E8E8E8] rounded-sm space-y-2">
               <div className="flex items-center justify-between">

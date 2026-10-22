@@ -214,7 +214,7 @@ export default function Orders() {
                         </div>
                       </td>
                       <td className="py-4 px-6 text-sm text-[#666]">{dateStr}</td>
-                      <td className="py-4 px-6 text-sm">{itemsCount} pc{itemsCount > 1 ? 's' : ''}</td>
+                      <td className="py-4 px-6 text-sm">{itemsCount} {itemsCount > 1 ? 'items' : 'item'}</td>
                       <td className="py-4 px-6 text-sm font-medium">{formatPrice(order.totalPrice || 0)}</td>
                       <td className="py-4 px-6 text-sm text-[#666]">
                         <span className="font-medium text-[#0A0A0A]">COD</span> · {order.wilaya || 'Alger'}

@@ -45,7 +45,7 @@ export default function Categories() {
       setSubmitting(true);
       setError(null);
       await createCategory({ name: newCategoryName.trim() });
-      setSuccess(`Category "${newCategoryName}" created in MongoDB.`);
+      setSuccess(`Category "${newCategoryName}" created successfully.`);
       setNewCategoryName('');
       await loadCategories();
       setTimeout(() => setSuccess(null), 4000);
@@ -73,7 +73,7 @@ export default function Categories() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
           <p className="text-base text-[#666]">
-            Manage product categories and collections stored in MongoDB Atlas ({categories.length} categories active).
+            Manage product categories and collections ({categories.length} categories active).
           </p>
         </div>
         <button

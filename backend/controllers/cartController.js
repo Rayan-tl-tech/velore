@@ -9,8 +9,8 @@ import {
 export const addToCartController = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { productId, quantity, size = 'M' } = req.body;
-    const cart = await addToCart(userId, productId, quantity, size);
+    const { productId, quantity, size = 'M', productName } = req.body;
+    const cart = await addToCart(userId, productId, quantity, size, productName);
     res.status(200).json(cart);
   } catch (error) {
     next(error);

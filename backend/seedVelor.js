@@ -9,6 +9,7 @@ import Product from './models/productModel.js';
 import User from './models/userModel.js';
 
 const velorProducts = [
+  // New Arrivals / Women
   {
     name: "Essential Structured Shirt",
     price: 6900,
@@ -17,6 +18,7 @@ const velorProducts = [
     image: "https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=800&h=1000&fit=crop",
     stock: 30,
   },
+  // New Arrivals / Men
   {
     name: "Relaxed Cotton Overshirt",
     price: 7400,
@@ -25,6 +27,7 @@ const velorProducts = [
     image: "https://images.unsplash.com/photo-1617137968427-85924c800a22?w=800&h=1000&fit=crop",
     stock: 25,
   },
+  // New Arrivals / Women
   {
     name: "Tailored Wool-Blend Coat",
     price: 14800,
@@ -33,12 +36,30 @@ const velorProducts = [
     image: "https://images.unsplash.com/photo-1539533113208-f6df8cc8b543?w=800&h=1000&fit=crop",
     stock: 18,
   },
+  // New Arrivals / Men
   {
     name: "Modern Denim Set",
     price: 9800,
     categoryName: "Men",
     description: "Selvedge-inspired indigo wash set with clean architectural cut and understated hardware.",
     image: "https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=800&h=1000&fit=crop",
+    stock: 20,
+  },
+  // Men's Collection
+  {
+    name: "Brushed Canvas Overshirt",
+    price: 7400,
+    categoryName: "Men",
+    description: "Textured tactile overshirt with clean collar line and natural corozo buttons.",
+    image: "https://images.unsplash.com/photo-1516257984-b1b4d707412e?w=800&h=1000&fit=crop",
+    stock: 25,
+  },
+  {
+    name: "Architectural Trench",
+    price: 13500,
+    categoryName: "Men",
+    description: "Clean silhouette trench cut from water-resistant compact cotton with storm flap and horn buttons.",
+    image: "https://images.unsplash.com/photo-1480429370139-e0132c086e2a?w=800&h=1000&fit=crop",
     stock: 20,
   },
   {
@@ -50,6 +71,31 @@ const velorProducts = [
     stock: 22,
   },
   {
+    name: "Tailored Navy Wool Suit",
+    price: 18900,
+    categoryName: "Men",
+    description: "Precision-cut two-piece suit crafted from superfine virgin wool with subtle canvassing.",
+    image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&h=1000&fit=crop",
+    stock: 15,
+  },
+  // Women's Collection
+  {
+    name: "Mediterranean Wrap Dress",
+    price: 8900,
+    categoryName: "Women",
+    description: "Fluid draped midi dress with adjustable tie belt cut from breezy linen-viscose blend.",
+    image: "https://images.unsplash.com/photo-1496747611176-843222e1e57c?w=800&h=1000&fit=crop",
+    stock: 25,
+  },
+  {
+    name: "Atelier Ruffle Evening Coat",
+    price: 16500,
+    categoryName: "Women",
+    description: "Dramatic sculptural evening coat with subtle ruffle collar in structured crepe weave.",
+    image: "https://images.unsplash.com/photo-1554412933-514a83d2f3c8?w=800&h=1000&fit=crop",
+    stock: 12,
+  },
+  {
     name: "Fine Rib Everyday Top",
     price: 4500,
     categoryName: "Women",
@@ -57,6 +103,15 @@ const velorProducts = [
     image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&h=1000&fit=crop",
     stock: 40,
   },
+  {
+    name: "Pleated Summer Poplin Dress",
+    price: 7900,
+    categoryName: "Women",
+    description: "Crisp organic cotton poplin dress featuring delicate sunburst pleats and a relaxed drape.",
+    image: "https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?w=800&h=1000&fit=crop",
+    stock: 20,
+  },
+  // Kids' Collection
   {
     name: "Soft Motion Sweatshirt",
     price: 3900,
@@ -73,13 +128,30 @@ const velorProducts = [
     image: "https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?w=800&h=1000&fit=crop",
     stock: 25,
   },
+  {
+    name: "Cotton Dot Smock Blouse",
+    price: 3500,
+    categoryName: "Kids",
+    description: "Airy woven cotton blouse with subtle micro-dot texture and elasticated cuffs.",
+    image: "https://images.unsplash.com/photo-1518831959646-742c3a14ebf7?w=800&h=1000&fit=crop",
+    stock: 30,
+  },
+  {
+    name: "Denim & Plaid Play Set",
+    price: 5400,
+    categoryName: "Kids",
+    description: "Two-piece utility play set with lightweight denim trousers and soft brushed cotton shirt.",
+    image: "https://images.unsplash.com/photo-1514090458221-65bb69cf63e6?w=800&h=1000&fit=crop",
+    stock: 20,
+  },
 ];
 
 async function seed() {
   try {
-    console.log('Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGO_URI, { dbName: 'ecommerce' });
-    console.log('Connected to MongoDB.');
+    const targetDb = process.env.DB_NAME || 'velor';
+    console.log(`Connecting to MongoDB (target database: ${targetDb})...`);
+    await mongoose.connect(process.env.MONGO_URI, { dbName: targetDb });
+    console.log(`Connected to MongoDB Atlas: database "${targetDb}".`);
 
     // 1. Seed or Verify Users
     const existingAdmin = await User.findOne({ email: 'admin@velor.com' });
@@ -95,9 +167,9 @@ async function seed() {
         commune: 'Hydra',
         address: 'Boulevard de la Liberté',
       });
-      console.log('Admin account created: admin@velor.com / Admin1234!');
+      console.log('✅ Admin account created: admin@velor.com / Admin1234!');
     } else {
-      console.log('Admin account already exists.');
+      console.log('ℹ️ Admin account already exists in velor db.');
     }
 
     const existingUser = await User.findOne({ email: 'client@velor.com' });
@@ -113,7 +185,24 @@ async function seed() {
         commune: 'Oran',
         address: 'Rue Ben M’hidi',
       });
-      console.log('Customer account created: client@velor.com / Client1234!');
+      console.log('✅ Customer account created: client@velor.com / Client1234!');
+    }
+
+    // Also seed user Rayan if not present
+    const existingRayan = await User.findOne({ email: 'rayanoo1234567890@gmail.com' });
+    if (!existingRayan) {
+      const hashedPassword = await bcrypt.hash('Rayan1234!', 10);
+      await User.create({
+        name: 'Rayan Tlili',
+        email: 'rayanoo1234567890@gmail.com',
+        password: hashedPassword,
+        role: 'admin',
+        phone: '0550123456',
+        wilaya: 'Alger',
+        commune: 'Alger Centre',
+        address: 'Didouche Mourad',
+      });
+      console.log('✅ User account created: rayanoo1234567890@gmail.com');
     }
 
     // 2. Ensure Categories
@@ -122,17 +211,18 @@ async function seed() {
       let cat = await Category.findOne({ name: catName });
       if (!cat) {
         cat = await Category.create({ name: catName });
-        console.log(`Created Category: ${catName}`);
+        console.log(`✅ Created Category: ${catName}`);
       }
       categoriesMap[catName] = cat._id;
     }
 
-    // 3. Seed Products if empty or update
+    // 3. Seed Products (16 items)
+    let createdCount = 0;
     for (const item of velorProducts) {
       const categoryId = categoriesMap[item.categoryName];
-      const existingProd = await Product.findOne({ name: item.name, category: categoryId });
-      if (!existingProd) {
-        await Product.create({
+      let prod = await Product.findOne({ name: item.name });
+      if (!prod) {
+        prod = await Product.create({
           name: item.name,
           price: item.price,
           description: item.description,
@@ -140,17 +230,26 @@ async function seed() {
           image: item.image,
           category: categoryId,
         });
-        console.log(`Created product: ${item.name} (${item.categoryName})`);
+        createdCount++;
+        console.log(`✅ Created product [${prod._id}]: ${item.name} (${item.categoryName})`);
       } else {
-        // Ensure price is accurate
-        existingProd.price = item.price;
-        existingProd.image = item.image;
-        if (existingProd.stock <= 0) existingProd.stock = item.stock;
-        await existingProd.save();
+        prod.price = item.price;
+        prod.image = item.image;
+        prod.category = categoryId;
+        if (prod.stock <= 0) prod.stock = item.stock;
+        await prod.save();
       }
     }
 
-    console.log('VÉLOR Database seeding complete.');
+    const totalProds = await Product.countDocuments();
+    const totalCats = await Category.countDocuments();
+    const totalUsers = await User.countDocuments();
+
+    console.log(`\n🎉 VÉLOR Database "${targetDb}" seeding complete!`);
+    console.log(`   - Products: ${totalProds}`);
+    console.log(`   - Categories: ${totalCats}`);
+    console.log(`   - Users: ${totalUsers}`);
+
     process.exit(0);
   } catch (err) {
     console.error('Seeding error:', err);

@@ -51,22 +51,13 @@ apiClient.interceptors.response.use(
 
     // If unauthorized / token expired, purge stale token from storage
     if (status === 401) {
-      const isAuthError =
-        errorData?.expired ||
-        message.toLowerCase().includes('token') ||
-        message.toLowerCase().includes('session') ||
-        message.toLowerCase().includes('unauthorized') ||
-        message.toLowerCase().includes('access denied');
-
-      if (isAuthError) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.dispatchEvent(
-          new CustomEvent('auth:expired', {
-            detail: { message: message || 'Your session has expired. Please sign in again.' },
-          })
-        );
-      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(
+        new CustomEvent('auth:expired', {
+          detail: { message: message || 'Your session has expired. Please sign in again.' },
+        })
+      );
     }
 
     return Promise.reject(new Error(message));

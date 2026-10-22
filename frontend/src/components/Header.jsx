@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, User, ShoppingBag, Menu, X, Shield, Package, UserCheck, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -27,6 +27,62 @@ export default function Header({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // Profile Dropdown animation lifecycle
+  const [dropdownMounted, setDropdownMounted] = useState(false);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+
+  useEffect(() => {
+    if (dropdownOpen) {
+      setDropdownMounted(true);
+      const raf = requestAnimationFrame(() => {
+        setDropdownVisible(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setDropdownVisible(false);
+      const timer = setTimeout(() => {
+        setDropdownMounted(false);
+      }, 180);
+      return () => clearTimeout(timer);
+    }
+  }, [dropdownOpen]);
+
+  // Mobile Menu animation lifecycle
+  const [mobileMenuMounted, setMobileMenuMounted] = useState(false);
+  const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      setMobileMenuMounted(true);
+      const raf = requestAnimationFrame(() => {
+        setMobileMenuVisible(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setMobileMenuVisible(false);
+      const timer = setTimeout(() => {
+        setMobileMenuMounted(false);
+      }, 220);
+      return () => clearTimeout(timer);
+    }
+  }, [mobileMenuOpen]);
+
+  // Cart Badge micro-interaction on count increment
+  const [badgeBump, setBadgeBump] = useState(false);
+  const prevCartCountRef = useRef(cartCount);
+
+  useEffect(() => {
+    if (cartCount > 0 && cartCount !== prevCartCountRef.current) {
+      setBadgeBump(true);
+      const timer = setTimeout(() => {
+        setBadgeBump(false);
+      }, 200);
+      prevCartCountRef.current = cartCount;
+      return () => clearTimeout(timer);
+    }
+    prevCartCountRef.current = cartCount;
+  }, [cartCount]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -132,8 +188,17 @@ export default function Header({
                   </button>
 
                   {/* Account Dropdown */}
-                  {dropdownOpen && (
-                    <div className="absolute right-0 mt-3 w-56 bg-[#0A0A0A] text-white border border-white/20 rounded-xl shadow-2xl py-2 z-50 text-xs">
+                  {dropdownMounted && (
+                    <div
+                      style={{
+                        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      className={`absolute right-0 mt-3 w-56 bg-[#0A0A0A] text-white border border-white/20 rounded-xl shadow-2xl py-2 z-50 text-xs transform transition-[transform,opacity] duration-[180ms] ${
+                        dropdownVisible
+                          ? 'opacity-100 scale-100 translate-y-0'
+                          : 'opacity-0 scale-[0.98] -translate-y-1 pointer-events-none'
+                      }`}
+                    >
                       <div className="px-4 py-2 border-b border-white/10">
                         <p className="text-[10px] text-white/50 uppercase tracking-widest">Signed in as</p>
                         <p className="font-semibold truncate text-white mt-0.5">{user?.name}</p>
@@ -208,7 +273,7 @@ export default function Header({
                 </Link>
               )}
 
-              {/* Shopping Bag Button with Badge */}
+              {/* Shopping Bag Button with Animated Badge */}
               <button
                 onClick={openBag}
                 className="relative hover:text-white/70 transition-colors p-1"
@@ -216,7 +281,11 @@ export default function Header({
               >
                 <ShoppingBag size={20} strokeWidth={1.5} />
                 {cartCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-white text-[#0A0A0A] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                  <span
+                    className={`absolute -top-1.5 -right-1.5 bg-white text-[#0A0A0A] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center transform transition-transform duration-[200ms] ease-out ${
+                      badgeBump ? 'scale-110' : 'scale-100'
+                    }`}
+                  >
                     {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
@@ -226,15 +295,32 @@ export default function Header({
         </div>
 
         {/* Mobile Navigation Drawer */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-[#0A0A0A] border-t border-white/10">
+        {mobileMenuMounted && (
+          <div
+            style={{
+              transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+            }}
+            className={`lg:hidden bg-[#0A0A0A] border-t border-white/10 transform transition-[transform,opacity] duration-[220ms] ${
+              mobileMenuVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 -translate-y-1.5 pointer-events-none'
+            }`}
+          >
             <nav className="flex flex-col px-6 py-4 gap-4">
-              {navLinks.map((link) => (
+              {navLinks.map((link, idx) => (
                 <a
                   key={link.label}
                   href={link.href}
                   onClick={(e) => handleNavClick(e, link.href)}
-                  className="text-sm tracking-wide py-2 hover:text-white/70 transition-colors font-sans-body"
+                  style={{
+                    transitionDelay: mobileMenuVisible ? `${idx * 35}ms` : '0ms',
+                    transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+                  }}
+                  className={`text-sm tracking-wide py-2 hover:text-white/70 transition-[color,transform,opacity] duration-200 font-sans-body transform ${
+                    mobileMenuVisible
+                      ? 'translate-x-0 opacity-100'
+                      : '-translate-x-1.5 opacity-0'
+                  }`}
                 >
                   {link.label}
                 </a>
@@ -300,7 +386,7 @@ export default function Header({
         )}
 
         {/* Backdrop for desktop dropdown */}
-        {dropdownOpen && (
+        {dropdownMounted && (
           <div className="fixed inset-0 z-40" onClick={() => setDropdownOpen(false)} />
         )}
       </header>

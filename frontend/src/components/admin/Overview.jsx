@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingBag, Receipt, Users, LayoutGrid, ArrowUpRight, RefreshCw, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Receipt, Users, LayoutGrid, ArrowUpRight, ArrowRight, RefreshCw, AlertCircle } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { getAllProducts } from '../../services/api/productService';
 import { getAllOrders } from '../../services/api/orderService';
@@ -69,19 +69,22 @@ export default function Overview() {
   }, [isAdmin]);
 
   // Compute metrics from live database
-  const totalProductsCount = products.length || 12;
-  const totalOrdersCount = orders.length || 28;
-  const totalCustomersCount = customers.length || 9;
-  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0) || 842500;
+  const totalProductsCount = products.length;
+  const totalOrdersCount = orders.length;
+  const totalCustomersCount = customers.length;
+  const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
 
-  // Inventory breakdown
-  const inStockCount = products.filter((p) => (Number(p.stock) || 0) > 5).length || Math.round(totalProductsCount * 0.7);
-  const lowStockCount = products.filter((p) => (Number(p.stock) || 0) > 0 && (Number(p.stock) || 0) <= 5).length || Math.round(totalProductsCount * 0.2);
-  const outOfStockCount = products.filter((p) => (Number(p.stock) || 0) <= 0).length || Math.max(0, totalProductsCount - inStockCount - lowStockCount);
+  // Inventory breakdown directly from real MongoDB products
+  const inStockCount = products.filter((p) => (Number(p.stock) || 0) > 5).length;
+  const lowStockCount = products.filter((p) => {
+    const s = Number(p.stock) || 0;
+    return s >= 1 && s <= 5;
+  }).length;
+  const outOfStockCount = products.filter((p) => (Number(p.stock) || 0) === 0).length;
 
-  const inStockPct = Math.round((inStockCount / (totalProductsCount || 1)) * 100);
-  const lowStockPct = Math.round((lowStockCount / (totalProductsCount || 1)) * 100);
-  const outOfStockPct = Math.max(0, 100 - inStockPct - lowStockPct);
+  const inStockPct = totalProductsCount > 0 ? Math.round((inStockCount / totalProductsCount) * 100) : 0;
+  const lowStockPct = totalProductsCount > 0 ? Math.round((lowStockCount / totalProductsCount) * 100) : 0;
+  const outOfStockPct = totalProductsCount > 0 ? Math.round((outOfStockCount / totalProductsCount) * 100) : 0;
 
   // Recent orders
   const displayOrders = orders.length > 0
@@ -94,7 +97,7 @@ export default function Overview() {
           month: 'short',
           year: 'numeric',
         }),
-        items: o.items?.length || 1,
+        items: (o.items || []).reduce((acc, it) => acc + (it.quantity || 1), 0) || 1,
         total: formatPrice(o.totalPrice || 0),
         status: (o.status || 'pending').toUpperCase(),
       }))
@@ -106,31 +109,23 @@ export default function Overview() {
       ];
 
   const stats = [
-    { label: 'Total Products', value: totalProductsCount, change: 'Live from MongoDB Atlas', icon: ShoppingBag },
+    { label: 'Total Products', value: totalProductsCount, change: 'Active catalog', icon: ShoppingBag },
     { label: 'Total Orders', value: totalOrdersCount, change: 'COD Across 58 Wilayas', icon: Receipt },
     { label: 'Total Customers', value: totalCustomersCount, change: 'Registered users', icon: Users },
-    { label: 'Total Revenue', value: formatPrice(totalRevenue), change: 'Authoritative server total', icon: LayoutGrid },
+    { label: 'Total Revenue', value: formatPrice(totalRevenue), change: 'Store total', icon: LayoutGrid },
   ];
 
   return (
     <AdminLayout>
-      {/* Live Sync Indicator & Refresh Button */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 bg-white border border-[#E8E8E8] p-4">
-        <div className="flex items-center gap-3">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
-          <div>
-            <p className="text-xs font-medium tracking-wide uppercase text-[#0A0A0A]">
-              Live MongoDB Atlas Connection Active
-            </p>
-            <p className="text-xs text-[#666]">
-              Metrics are synced with database cluster: <code className="text-[#0A0A0A] font-mono">cluster0.lxedmrr.mongodb.net/ecommerce</code>
-            </p>
-          </div>
+      {/* Overview Action Bar */}
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <div>
+          <p className="text-xs text-[#666]">Real-time operational metrics across your boutique</p>
         </div>
         <button
           onClick={fetchData}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors bg-white font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors bg-white font-medium disabled:opacity-50 shadow-sm"
         >
           <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           {refreshing ? 'Refreshing...' : 'Refresh Data'}
@@ -160,84 +155,78 @@ export default function Overview() {
         ))}
       </div>
 
-      {/* Charts & Inventory Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Sales Performance Chart */}
-        <div className="lg:col-span-2 bg-white border border-[#E8E8E8] p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-2">Sales Overview</p>
-              <h2 className="font-serif-display text-3xl font-normal">Performance</h2>
-            </div>
-            <select className="border border-[#E8E8E8] px-4 py-2 text-sm focus:outline-none bg-white">
-              <option>Last 30 Days</option>
-              <option>This Quarter</option>
-            </select>
+      {/* Inventory Stock Status */}
+      <div className="bg-white border border-[#E8E8E8] p-8 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6">
+          <div>
+            <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-1">Inventory Health</p>
+            <h2 className="font-serif-display text-2xl font-normal">Stock status</h2>
           </div>
-          <div className="h-64 relative">
-            <svg className="w-full h-full" viewBox="0 0 600 200" preserveAspectRatio="none">
-              <line x1="0" y1="50" x2="600" y2="50" stroke="#E8E8E8" strokeWidth="1" />
-              <line x1="0" y1="100" x2="600" y2="100" stroke="#E8E8E8" strokeWidth="1" />
-              <line x1="0" y1="150" x2="600" y2="150" stroke="#E8E8E8" strokeWidth="1" />
-              <text x="0" y="55" fontSize="10" fill="#999">60K</text>
-              <text x="0" y="105" fontSize="10" fill="#999">40K</text>
-              <text x="0" y="155" fontSize="10" fill="#999">20K</text>
-              <text x="0" y="195" fontSize="10" fill="#999">0 DA</text>
-              <text x="50" y="195" fontSize="10" fill="#999">May 01</text>
-              <text x="170" y="195" fontSize="10" fill="#999">May 08</text>
-              <text x="290" y="195" fontSize="10" fill="#999">May 15</text>
-              <text x="410" y="195" fontSize="10" fill="#999">May 22</text>
-              <text x="530" y="195" fontSize="10" fill="#999">May 30</text>
-              <path
-                d="M 50 150 L 110 120 L 170 130 L 230 80 L 290 60 L 350 90 L 410 50 L 470 70 L 530 40 L 590 60 L 590 180 L 50 180 Z"
-                fill="#F5F5F5"
-                opacity="0.5"
-              />
-              <path
-                d="M 50 150 L 110 120 L 170 130 L 230 80 L 290 60 L 350 90 L 410 50 L 470 70 L 530 40 L 590 60"
-                fill="none"
-                stroke="#0A0A0A"
-                strokeWidth="2"
-              />
-            </svg>
-          </div>
+          <p className="text-xs text-[#888]">Click any category to filter and manage pieces</p>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* In Stock Card */}
+          <Link
+            to="/admin/products?stock=in_stock"
+            className="group block p-6 bg-[#FAFAFA] hover:bg-white border border-[#E8E8E8] hover:border-[#0A0A0A] hover:shadow-sm transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0A0A0A] focus:ring-offset-2"
+            aria-label={`View ${inStockCount} products in stock with more than 5 units`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-[#666] group-hover:text-[#0A0A0A] transition-colors">
+                In stock (&gt; 5 units)
+              </p>
+              <p className="text-sm font-semibold text-[#0A0A0A]">{inStockCount} items</p>
+            </div>
+            <div className="h-1.5 bg-[#E8E8E8] rounded-full overflow-hidden mb-4">
+              <div className="h-full bg-[#0A0A0A] rounded-full transition-all duration-500" style={{ width: `${inStockPct}%` }}></div>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-[#EFEFEF] text-xs text-[#888] group-hover:text-[#0A0A0A] transition-colors">
+              <span className="text-[11px] uppercase tracking-wider font-medium">View in catalog</span>
+              <ArrowRight size={13} className="transform group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
 
-        {/* Live Inventory Status */}
-        <div className="bg-white border border-[#E8E8E8] p-8">
-          <div className="mb-8">
-            <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-2">Live Inventory</p>
-            <h2 className="font-serif-display text-3xl font-normal">Stock status</h2>
-          </div>
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm">In stock (&gt; 5 units)</p>
-                <p className="text-sm font-medium">{inStockCount} items</p>
-              </div>
-              <div className="h-2 bg-[#F5F5F5] rounded-full overflow-hidden">
-                <div className="h-full bg-[#0A0A0A] rounded-full" style={{ width: `${inStockPct}%` }}></div>
-              </div>
+          {/* Low Stock Card */}
+          <Link
+            to="/admin/products?stock=low_stock"
+            className="group block p-6 bg-[#FAFAFA] hover:bg-white border border-[#E8E8E8] hover:border-[#0A0A0A] hover:shadow-sm transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0A0A0A] focus:ring-offset-2"
+            aria-label={`View ${lowStockCount} products with low stock (1 to 5 units)`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-[#666] group-hover:text-[#0A0A0A] transition-colors">
+                Low stock (1 - 5 units)
+              </p>
+              <p className="text-sm font-semibold text-amber-700">{lowStockCount} items</p>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm">Low stock (1 - 5 units)</p>
-                <p className="text-sm font-medium text-amber-700">{lowStockCount} items</p>
-              </div>
-              <div className="h-2 bg-[#F5F5F5] rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full" style={{ width: `${lowStockPct}%` }}></div>
-              </div>
+            <div className="h-1.5 bg-[#E8E8E8] rounded-full overflow-hidden mb-4">
+              <div className="h-full bg-amber-500 rounded-full transition-all duration-500" style={{ width: `${lowStockPct}%` }}></div>
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-sm">Out of stock (0 units)</p>
-                <p className="text-sm font-medium text-red-600">{outOfStockCount} items</p>
-              </div>
-              <div className="h-2 bg-[#F5F5F5] rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 rounded-full" style={{ width: `${outOfStockPct}%` }}></div>
-              </div>
+            <div className="flex items-center justify-between pt-2 border-t border-[#EFEFEF] text-xs text-[#888] group-hover:text-[#0A0A0A] transition-colors">
+              <span className="text-[11px] uppercase tracking-wider font-medium">View in catalog</span>
+              <ArrowRight size={13} className="transform group-hover:translate-x-1 transition-transform text-amber-700" />
             </div>
-          </div>
+          </Link>
+
+          {/* Out of Stock Card */}
+          <Link
+            to="/admin/products?stock=out_of_stock"
+            className="group block p-6 bg-[#FAFAFA] hover:bg-white border border-[#E8E8E8] hover:border-[#0A0A0A] hover:shadow-sm transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#0A0A0A] focus:ring-offset-2"
+            aria-label={`View ${outOfStockCount} out of stock products (0 units)`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium uppercase tracking-wider text-[#666] group-hover:text-[#0A0A0A] transition-colors">
+                Out of stock (0 units)
+              </p>
+              <p className="text-sm font-semibold text-red-600">{outOfStockCount} items</p>
+            </div>
+            <div className="h-1.5 bg-[#E8E8E8] rounded-full overflow-hidden mb-4">
+              <div className="h-full bg-red-500 rounded-full transition-all duration-500" style={{ width: `${outOfStockPct}%` }}></div>
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-[#EFEFEF] text-xs text-[#888] group-hover:text-[#0A0A0A] transition-colors">
+              <span className="text-[11px] uppercase tracking-wider font-medium">View in catalog</span>
+              <ArrowRight size={13} className="transform group-hover:translate-x-1 transition-transform text-red-600" />
+            </div>
+          </Link>
         </div>
       </div>
 
@@ -275,7 +264,7 @@ export default function Overview() {
                   <td className="py-4 px-4 text-sm font-medium font-mono">{order.id}</td>
                   <td className="py-4 px-4 text-sm">{order.customer}</td>
                   <td className="py-4 px-4 text-sm text-[#666]">{order.date}</td>
-                  <td className="py-4 px-4 text-sm">{order.items}</td>
+                  <td className="py-4 px-4 text-sm">{order.items} {order.items > 1 ? 'items' : 'item'}</td>
                   <td className="py-4 px-4 text-sm font-medium">{order.total}</td>
                   <td className="py-4 px-4">
                     <span className={`inline-block px-3 py-1 text-xs tracking-[0.1em] uppercase ${statusColors[order.status] || 'bg-gray-100 text-gray-800'}`}>

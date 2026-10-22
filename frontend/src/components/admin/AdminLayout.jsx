@@ -90,11 +90,7 @@ export default function AdminLayout({ children }) {
           })}
         </nav>
 
-        {/* Database Status in Sidebar */}
-        <div className="px-8 py-3 bg-white/[0.03] border-t border-white/5 text-[11px] text-white/50 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span>MongoDB Atlas: Connected</span>
-        </div>
+
 
         {/* User Card */}
         <div className="p-8 border-t border-white/10 flex items-center justify-between">
@@ -126,14 +122,7 @@ export default function AdminLayout({ children }) {
         <header className="bg-white border-b border-[#E8E8E8] px-8 py-6 sticky top-0 z-10">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <p className="text-xs tracking-[0.2em] uppercase text-[#666]">VÉLOR ADMIN</p>
-                <span className="text-white/20">·</span>
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] tracking-widest uppercase bg-emerald-50 text-emerald-800 font-semibold border border-emerald-200">
-                  <CheckCircle2 size={11} className="text-emerald-600" />
-                  Live MongoDB Atlas
-                </span>
-              </div>
+              <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-1">VÉLOR ADMIN</p>
               <h1 className="font-serif-display text-4xl font-normal">{currentPage}</h1>
             </div>
 
@@ -195,7 +184,9 @@ export default function AdminLayout({ children }) {
           </div>
         )}
 
-        <main className="p-8">{children}</main>
+        <main key={location.pathname} className="p-8 animate-admin-view">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Loader2, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
@@ -18,6 +18,46 @@ export default function AuthModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Animation Lifecycle: enter → visible → exit → unmount
+  const [visible, setVisible] = useState(false);
+  const isClosingRef = useRef(false);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => {
+      setVisible(true);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const handleRequestClose = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 240);
+  }, [onClose]);
+
+  // Keyboard accessibility: Escape key closes modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleRequestClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleRequestClose]);
+
+  // Lock background body scroll
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, []);
 
   const resetForm = () => {
     setName(''); setEmail(''); setPassword(''); setConfirmPassword('');
@@ -47,7 +87,7 @@ export default function AuthModal({ onClose, onSuccess }) {
         await login(email, password);
         await refreshCart();
         onSuccess?.();
-        onClose();
+        handleRequestClose();
       } else {
         await register(name, email, password);
         setSuccess('Account created! Please sign in.');
@@ -61,16 +101,35 @@ export default function AuthModal({ onClose, onSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans-body"
+      role="dialog"
+      aria-modal="true"
+      aria-label={mode === 'login' ? 'Sign In Modal' : 'Create Account Modal'}
+    >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-[240ms] ease-out cursor-pointer ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleRequestClose}
+      />
 
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 z-10">
+      <div
+        style={{
+          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+        className={`relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 z-10 transform transition-[transform,opacity] duration-[240ms] ${
+          visible
+            ? 'opacity-100 scale-100 translate-y-0'
+            : 'opacity-0 scale-[0.98] translate-y-1'
+        }`}
+      >
         {/* Close button */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          onClick={handleRequestClose}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
           aria-label="Close"
         >
           <X className="w-5 h-5" />

@@ -30,7 +30,7 @@ const authMiddleware = async (req, res, next) => {
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
-      return res.status(401).json({ error: 'User not found or account no longer exists.', expired: false });
+      return res.status(401).json({ error: 'Session expired or user account not found. Please sign in again.', expired: true });
     }
 
     // Attacher l'utilisateur à la requête

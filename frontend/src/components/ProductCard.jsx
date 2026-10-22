@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, ShoppingBag, Check } from 'lucide-react';
 import { formatPrice } from '../data/products';
 import { useCart } from '../context/CartContext';
 
-export default function ProductCard({ product, onProductClick, onShowToast }) {
+export default function ProductCard({ product, index = 0, onProductClick, onShowToast }) {
+  const [mounted, setMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [addedRecently, setAddedRecently] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const { addToCart } = useCart();
 
@@ -31,9 +39,18 @@ export default function ProductCard({ product, onProductClick, onShowToast }) {
     }
   };
 
+  const staggerDelay = `${Math.min(index, 7) * 40}ms`;
+
   return (
     <div
-      className="group cursor-pointer"
+      id={`product-card-${product.name?.toLowerCase().replace(/\s+/g, '-')}`}
+      style={{
+        transitionDelay: staggerDelay,
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      className={`group cursor-pointer transform transition-[transform,opacity] duration-[400ms] ${
+        mounted ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'
+      }`}
       onClick={() => onProductClick?.(product)}
     >
       <div

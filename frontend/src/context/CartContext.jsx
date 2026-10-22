@@ -123,7 +123,7 @@ export function CartProvider({ children }) {
       if (isAuthenticated) {
         setLoading(true);
         try {
-          const updated = await addToCartApi(productId, qty, size);
+          const updated = await addToCartApi(productId, qty, size, productObj?.name || '');
           setBackendCart(updated);
           if (openDrawer) setIsBagOpen(true);
           return updated;

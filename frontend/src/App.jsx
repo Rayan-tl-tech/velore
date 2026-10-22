@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -23,6 +23,7 @@ import OrdersModal from './components/orders/OrdersModal';
 import ProfileModal from './components/profile/ProfileModal';
 import { useToast } from './components/ui/useToast';
 import { products } from './data/products';
+import { getAllProducts } from './services/api/productService';
 
 function HomePage({
   onProductClick,
@@ -30,10 +31,40 @@ function HomePage({
   onOpenProfile,
   onShowToast,
 }) {
-  const newArrivals = products.filter((p) => p.collection === 'new-arrivals');
-  const menProducts = products.filter((p) => p.collection === 'men');
-  const womenProducts = products.filter((p) => p.collection === 'women');
-  const kidsProducts = products.filter((p) => p.collection === 'kids');
+  const [catalog, setCatalog] = useState(products);
+
+  useEffect(() => {
+    let active = true;
+    getAllProducts()
+      .then((live) => {
+        if (!active || !Array.isArray(live) || live.length === 0) return;
+        setCatalog((current) =>
+          current.map((item) => {
+            const matched = live.find(
+              (p) => p.name?.toLowerCase().trim() === item.name?.toLowerCase().trim()
+            );
+            if (matched) {
+              return {
+                ...item,
+                _id: matched._id,
+                price: matched.price ?? item.price,
+                stock: matched.stock ?? item.stock,
+              };
+            }
+            return item;
+          })
+        );
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const newArrivals = catalog.filter((p) => p.collection === 'new-arrivals');
+  const menProducts = catalog.filter((p) => p.collection === 'men');
+  const womenProducts = catalog.filter((p) => p.collection === 'women');
+  const kidsProducts = catalog.filter((p) => p.collection === 'kids');
 
   return (
     <div className="min-h-screen bg-white">

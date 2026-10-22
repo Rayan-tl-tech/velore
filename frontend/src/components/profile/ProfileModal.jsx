@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, User, Mail, Shield, Check, Loader2, Edit2, Phone, MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getProfile, updateProfile } from '../../services/api/userService';
@@ -19,6 +19,60 @@ export default function ProfileModal({ isOpen, onClose, onShowToast }) {
   const [wilaya, setWilaya] = useState('16 - Alger');
   const [commune, setCommune] = useState('');
   const [address, setAddress] = useState('');
+
+  // Animation Lifecycle: open → enter → visible → exit → unmount
+  const [mounted, setMounted] = useState(isOpen);
+  const [visible, setVisible] = useState(false);
+  const isClosingRef = useRef(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      isClosingRef.current = false;
+      setMounted(true);
+      const raf = requestAnimationFrame(() => {
+        setVisible(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => {
+        setMounted(false);
+      }, 240);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
+  const handleRequestClose = useCallback(() => {
+    if (isClosingRef.current) return;
+    isClosingRef.current = true;
+    setVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 240);
+  }, [onClose]);
+
+  // Keyboard accessibility: Escape key closes modal
+  useEffect(() => {
+    if (!mounted) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleRequestClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mounted, handleRequestClose]);
+
+  // Lock background body scroll
+  useEffect(() => {
+    if (mounted) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [mounted]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -45,7 +99,7 @@ export default function ProfileModal({ isOpen, onClose, onShowToast }) {
       .finally(() => setLoading(false));
   }, [isOpen, user]);
 
-  if (!isOpen) return null;
+  if (!mounted) return null;
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -76,18 +130,34 @@ export default function ProfileModal({ isOpen, onClose, onShowToast }) {
   const displayEmail = profile?.email || user?.email || '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans-body">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 font-sans-body"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Customer Profile"
+    >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
+        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-[240ms] ease-out cursor-pointer ${
+          visible ? 'opacity-100' : 'opacity-0'
+        }`}
+        onClick={handleRequestClose}
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white shadow-2xl w-full max-w-lg overflow-hidden z-10 p-6 md:p-8 border border-[#E8E8E8]">
+      <div
+        style={{
+          transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+        className={`relative bg-white shadow-2xl w-full max-w-lg overflow-hidden z-10 p-6 md:p-8 border border-[#E8E8E8] transform transition-[transform,opacity] duration-[240ms] ${
+          visible
+            ? 'opacity-100 scale-100 translate-y-0'
+            : 'opacity-0 scale-[0.98] translate-y-1'
+        }`}
+      >
         {/* Close Button */}
         <button
-          onClick={onClose}
+          onClick={handleRequestClose}
           className="absolute top-4 right-4 p-2 text-[#0A0A0A] hover:bg-[#F7F6F2] transition-colors cursor-pointer"
           aria-label="Close"
         >

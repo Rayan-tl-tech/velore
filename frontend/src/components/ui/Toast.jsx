@@ -24,7 +24,7 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
       setVisible(false);
       setTimeout(() => {
         onCloseRef.current?.();
-      }, 300);
+      }, 200);
     }, duration);
 
     return () => {
@@ -37,16 +37,19 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
     setVisible(false);
     setTimeout(() => {
       onCloseRef.current?.();
-    }, 300);
+    }, 200);
   };
 
   const isSuccess = type === 'success';
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl shadow-xl text-sm font-medium transition-all duration-300 max-w-sm pointer-events-auto border
+      style={{
+        transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
+      }}
+      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl shadow-xl text-sm font-medium transform transition-[transform,opacity] duration-[200ms] max-w-sm pointer-events-auto border
         ${isSuccess ? 'bg-white border-green-200 text-green-800' : 'bg-white border-red-200 text-red-800'}
-        ${visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-3 scale-95'}`}
+        ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}
     >
       {isSuccess ? (
         <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />

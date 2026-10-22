@@ -42,14 +42,30 @@ const matchesItem = (item, productId, size) => {
 };
 
 // Ajouter un produit au panier
-export const addToCart = async (userId, productId, quantity = 1, size = 'M') => {
+export const addToCart = async (userId, productId, quantity = 1, size = 'M', productName = '') => {
   validateUserId(userId);
-  validateProductId(productId);
+
+  let targetId = productId;
+  if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
+    // If not a valid ObjectId, try finding the product by name if supplied
+    let found = null;
+    if (productName) {
+      found = await Product.findOne({ name: new RegExp(`^${productName.trim()}$`, 'i') });
+    }
+    if (!found && typeof productId === 'string' && productId.length > 2) {
+      found = await Product.findOne({ name: new RegExp(productId, 'i') });
+    }
+    if (found) {
+      targetId = found._id;
+    } else {
+      validateProductId(targetId);
+    }
+  }
 
   const qty = validateQuantity(quantity);
   const cleanSize = String(size || 'M').trim();
 
-  const product = await Product.findById(productId);
+  const product = await Product.findById(targetId);
   if (!product) {
     const err = new Error('Product not found');
     err.statusCode = 404;
@@ -62,13 +78,13 @@ export const addToCart = async (userId, productId, quantity = 1, size = 'M') => 
   }
 
   const existingItemIndex = cart.items.findIndex((item) =>
-    matchesItem(item, productId, cleanSize)
+    matchesItem(item, targetId, cleanSize)
   );
 
   if (existingItemIndex > -1) {
     cart.items[existingItemIndex].quantity += qty;
   } else {
-    cart.items.push({ product: productId, quantity: qty, size: cleanSize });
+    cart.items.push({ product: targetId, quantity: qty, size: cleanSize });
   }
 
   await cart.save();

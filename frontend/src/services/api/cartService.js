@@ -17,8 +17,8 @@ export const getCart = async () => {
  * @param {string} productId - MongoDB ObjectId of the product
  * @param {number} quantity - Quantity to add (min 1)
  */
-export const addToCart = async (productId, quantity = 1) => {
-  const response = await apiClient.post('/cart', { productId, quantity });
+export const addToCart = async (productId, quantity = 1, size = 'M', productName = '') => {
+  const response = await apiClient.post('/cart', { productId, quantity, size, productName });
   return response.data;
 };
 
