@@ -41,3 +41,13 @@ export const removeFromCart = async (productId) => {
   const response = await apiClient.delete(`/cart/${productId}`);
   return response.data;
 };
+
+/**
+ * Empty the authenticated user's cart
+ * DELETE /api/cart
+ * Requires: Bearer token
+ */
+export const clearCart = async () => {
+  const response = await apiClient.delete('/cart');
+  return response.data;
+};

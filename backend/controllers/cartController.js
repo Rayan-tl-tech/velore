@@ -3,6 +3,7 @@ import {
   getCart,
   updateCartItem,
   removeFromCart,
+  clearCart,
 } from '../services/cartService.js';
 
 // Ajouter un produit au panier
@@ -54,9 +55,21 @@ export const removeFromCartController = async (req, res, next) => {
   }
 };
 
+// Vider le panier
+export const clearCartController = async (req, res, next) => {
+  try {
+    const userId = req.user._id;
+    const cart = await clearCart(userId);
+    res.status(200).json({ message: 'Cart cleared successfully', cart });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   addToCartController,
   getCartController,
   updateCartItemController,
   removeFromCartController,
+  clearCartController,
 };

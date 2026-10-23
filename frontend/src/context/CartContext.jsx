@@ -4,6 +4,7 @@ import {
   addToCart as addToCartApi,
   updateCartItem as updateCartItemApi,
   removeFromCart as removeFromCartApi,
+  clearCart as clearCartApi,
 } from '../services/api/cartService';
 import { createOrder as createOrderApi } from '../services/api/orderService';
 import { useAuth } from './AuthContext';
@@ -235,11 +236,15 @@ export function CartProvider({ children }) {
 
         const order = await createOrderApi(payload);
 
-        // Clear carts
+        // Clear carts in both local state and backend/storage
         if (isAuthenticated) {
           setBackendCart({ items: [] });
+          await clearCartApi().catch(() => {});
         } else {
           saveGuestCart([]);
+          try {
+            localStorage.removeItem(GUEST_CART_KEY);
+          } catch {}
         }
 
         window.dispatchEvent(new CustomEvent('order:created', { detail: order }));

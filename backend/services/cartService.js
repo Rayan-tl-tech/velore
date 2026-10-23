@@ -166,9 +166,21 @@ export const removeFromCart = async (userId, productId, size = null) => {
   return await cart.populate('items.product');
 };
 
+// Vider entièrement le panier
+export const clearCart = async (userId) => {
+  validateUserId(userId);
+  const cart = await Cart.findOneAndUpdate(
+    { user: userId },
+    { items: [] },
+    { new: true, upsert: true }
+  );
+  return cart;
+};
+
 export default {
   addToCart,
   getCart,
   updateCartItem,
   removeFromCart,
+  clearCart,
 };

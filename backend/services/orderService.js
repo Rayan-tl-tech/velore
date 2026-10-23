@@ -182,10 +182,13 @@ export const createOrder = async (orderPayload, authenticatedUser = null) => {
 
     const savedOrder = await order.save();
 
-    // 7. Clear user cart if this was an authenticated cart order
+    // 7. Clear user cart in MongoDB whenever an order is created
+    if (authenticatedUser) {
+      await Cart.findOneAndUpdate({ user: authenticatedUser._id }, { items: [] }).catch(() => {});
+    }
     if (userCart) {
       userCart.items = [];
-      await userCart.save();
+      await userCart.save().catch(() => {});
     }
 
     // 8. If authenticated user's profile is missing delivery data, save it as default

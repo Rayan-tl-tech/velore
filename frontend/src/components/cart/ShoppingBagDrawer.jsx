@@ -113,15 +113,25 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
     }
   }, [mounted]);
 
-  // Reset mode when closing
+  // Reset mode after drawer is fully closed and unmounted
   useEffect(() => {
-    if (!isBagOpen) {
+    if (!isBagOpen && !mounted) {
       if (drawerMode === 'success') {
         setDrawerMode('cart');
         setPlacedOrder(null);
+        setFormError('');
       }
     }
-  }, [isBagOpen, drawerMode]);
+  }, [isBagOpen, mounted, drawerMode]);
+
+  const handleContinueShopping = () => {
+    closeBag();
+    setTimeout(() => {
+      setDrawerMode('cart');
+      setPlacedOrder(null);
+      setFormError('');
+    }, 350);
+  };
 
   if (!mounted) return null;
 
@@ -634,7 +644,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
               </div>
 
               <button
-                onClick={closeBag}
+                onClick={handleContinueShopping}
                 className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 cursor-pointer"
               >
                 Continuer mes achats
