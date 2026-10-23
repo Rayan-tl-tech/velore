@@ -9,6 +9,7 @@ import {
 } from '../controllers/orderController.js';
 import authMiddleware, { optionalAuthMiddleware } from '../middlewares/authMiddleware.js';
 import roleMiddleware from '../middlewares/roleMiddleware.js';
+import { validateObjectIdParam } from '../middlewares/validateObjectId.js';
 
 const router = express.Router();
 
@@ -19,12 +20,12 @@ router.post('/', optionalAuthMiddleware, createOrderController);
 router.get('/my', authMiddleware, getMyOrdersController);
 
 // Single order view: admin, owner, or guest with token
-router.get('/:id', optionalAuthMiddleware, getOrderByIdController);
+router.get('/:id', validateObjectIdParam('id'), optionalAuthMiddleware, getOrderByIdController);
 
 // Admin-only endpoints
 router.get('/', authMiddleware, roleMiddleware('admin'), getAllOrdersController);
-router.put('/:id/status', authMiddleware, roleMiddleware('admin'), updateOrderStatusController);
-router.put('/:id', authMiddleware, roleMiddleware('admin'), updateOrderStatusController);
-router.delete('/:id', authMiddleware, roleMiddleware('admin'), deleteOrderController);
+router.put('/:id/status', authMiddleware, roleMiddleware('admin'), validateObjectIdParam('id'), updateOrderStatusController);
+router.put('/:id', authMiddleware, roleMiddleware('admin'), validateObjectIdParam('id'), updateOrderStatusController);
+router.delete('/:id', authMiddleware, roleMiddleware('admin'), validateObjectIdParam('id'), deleteOrderController);
 
 export default router;

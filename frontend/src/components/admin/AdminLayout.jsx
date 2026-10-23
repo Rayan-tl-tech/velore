@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -12,7 +11,6 @@ import {
   ArrowLeft,
   LogOut,
   ShieldCheck,
-  KeyRound,
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -28,27 +26,13 @@ const navItems = [
 
 export default function AdminLayout({ children }) {
   const location = useLocation();
-  const { user, isAdmin, login, logout } = useAuth();
-  const [loggingIn, setLoggingIn] = useState(false);
-  const [authError, setAuthError] = useState(null);
+  const { user, isAdmin, logout } = useAuth();
 
   const currentPage = navItems.find((item) => item.path === location.pathname)?.label || 'Overview';
 
   const userInitials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : isAdmin ? 'AD' : 'GZ';
-
-  const handleQuickAdminLogin = async () => {
-    try {
-      setLoggingIn(true);
-      setAuthError(null);
-      await login('admin@velor.com', 'Admin1234!');
-    } catch (err) {
-      setAuthError(err.message || 'Failed to authenticate as admin');
-    } finally {
-      setLoggingIn(false);
-    }
-  };
+    : 'AD';
 
   return (
     <div className="min-h-screen flex bg-[#F5F5F5] w-full">
@@ -97,9 +81,9 @@ export default function AdminLayout({ children }) {
               {userInitials}
             </div>
             <div className="overflow-hidden">
-              <p className="text-xs font-medium truncate">{user?.name || (isAdmin ? 'Admin' : 'Guest Admin')}</p>
+              <p className="text-xs font-medium truncate">{user?.name || 'Administrator'}</p>
               <p className="text-[10px] text-white/50 truncate">
-                {isAdmin ? 'Master Admin' : 'Demo Profile'}
+                Administrator
               </p>
             </div>
           </div>
@@ -146,41 +130,13 @@ export default function AdminLayout({ children }) {
                   {userInitials}
                 </div>
                 <div className="hidden md:block">
-                  <p className="text-xs font-medium leading-tight text-[#0A0A0A]">{user?.name || (isAdmin ? 'Admin' : 'Guest')}</p>
-                  <p className="text-[10px] text-[#666]">{isAdmin ? 'Administrator' : 'Read-Only Mode'}</p>
+                  <p className="text-xs font-medium leading-tight text-[#0A0A0A]">{user?.name || 'Administrator'}</p>
+                  <p className="text-[10px] text-[#666]">Administrator</p>
                 </div>
               </div>
             </div>
           </div>
         </header>
-
-        {/* Quick Admin Auth Banner if not authenticated as admin */}
-        {!isAdmin && (
-          <div className="bg-[#0A0A0A] text-white px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border-b border-white/10 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <KeyRound size={15} className="text-amber-400 shrink-0" />
-              <span className="text-[11px] sm:text-xs">
-                To create products, update order statuses, or manage customer roles, authenticate with an administrator account.
-              </span>
-            </div>
-            <div className="flex items-center gap-3 shrink-0">
-              {authError && <span className="text-red-400 text-xs">{authError}</span>}
-              <button
-                onClick={handleQuickAdminLogin}
-                disabled={loggingIn}
-                className="bg-white text-[#0A0A0A] px-3.5 py-1.5 font-medium hover:bg-white/90 transition-colors uppercase tracking-wider text-[10px] disabled:opacity-50"
-              >
-                {loggingIn ? 'Connecting...' : 'One-Click Admin Login'}
-              </button>
-              <Link
-                to="/signin"
-                className="text-white/70 hover:text-white underline underline-offset-2 text-[11px]"
-              >
-                Custom Sign In
-              </Link>
-            </div>
-          </div>
-        )}
 
         <main key={location.pathname} className="p-6 lg:p-8 animate-admin-view flex-1">
           {children}

@@ -1,18 +1,21 @@
 import mongoose from 'mongoose';
 import Cart from '../models/cartModel.js';
 import Product from '../models/productModel.js';
+import { isValidObjectId } from '../middlewares/validateObjectId.js';
 
 const validateUserId = (userId) => {
-  if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
-    const err = new Error('Invalid user ID');
+  const idStr = String(userId?._id || userId || '');
+  if (!isValidObjectId(idStr)) {
+    const err = new Error('Invalid user ID format');
     err.statusCode = 400;
     throw err;
   }
 };
 
 const validateProductId = (productId) => {
-  if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
-    const err = new Error('Invalid product ID');
+  const idStr = String(productId?._id || productId || '');
+  if (!isValidObjectId(idStr)) {
+    const err = new Error('Invalid product ID format');
     err.statusCode = 400;
     throw err;
   }

@@ -19,6 +19,29 @@ if (!process.env.JWT_SECRET || typeof process.env.JWT_SECRET !== 'string' || pro
   process.exit(1);
 }
 
+// SEC-14: In production, Cloudinary storage is strictly required to prevent image loss on ephemeral serverless filesystems
+if (process.env.NODE_ENV === 'production') {
+  const missingCloudinaryVars = [];
+  if (!process.env.CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME.trim() === '') {
+    missingCloudinaryVars.push('CLOUDINARY_CLOUD_NAME');
+  }
+  if (!process.env.CLOUDINARY_API_KEY || process.env.CLOUDINARY_API_KEY.trim() === '') {
+    missingCloudinaryVars.push('CLOUDINARY_API_KEY');
+  }
+  if (!process.env.CLOUDINARY_API_SECRET || process.env.CLOUDINARY_API_SECRET.trim() === '') {
+    missingCloudinaryVars.push('CLOUDINARY_API_SECRET');
+  }
+
+  if (missingCloudinaryVars.length > 0) {
+    console.error(
+      `FATAL: Production mode requires persistent cloud storage, but Cloudinary is not configured.\n` +
+      `Missing environment variable(s): ${missingCloudinaryVars.join(', ')}.\n` +
+      `Ephemeral local disk storage (/uploads) is disabled in production to prevent image loss.`
+    );
+    process.exit(1);
+  }
+}
+
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoute.js';
@@ -130,6 +153,18 @@ const orderLimiter = rateLimit({
   },
 });
 
+// MEDIUM-02: Rate limiter for file uploads (30 uploads per 15 minutes per IP)
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 upload requests per 15 minutes per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many upload requests. Please try again after 15 minutes.',
+    success: false,
+  },
+});
+
 // Health check endpoint for deployment monitoring
 app.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'E-commerce API is active and running!' });
@@ -147,6 +182,14 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/orders', (req, res, next) => {
   if (req.method === 'POST') {
     return orderLimiter(req, res, next);
+  }
+  next();
+});
+
+// MEDIUM-02: Protect image upload endpoint with rate limiter
+app.use('/api/upload', (req, res, next) => {
+  if (req.method === 'POST') {
+    return uploadLimiter(req, res, next);
   }
   next();
 });

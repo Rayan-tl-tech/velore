@@ -56,7 +56,7 @@ export default function Customers() {
       phone: u.phone || '0550 12 34 56',
       wilaya: u.wilaya || 'Alger',
       ordersCount: userOrders.length,
-      totalSpent: totalSpent > 0 ? formatPrice(totalSpent) : (u.email === 'admin@velor.com' ? '0 DA' : '26 700 DA'),
+      totalSpent: formatPrice(totalSpent || 0),
       role: isUserAdmin ? 'ADMIN' : 'CLIENT',
       registeredDate: new Date(u.createdAt || Date.now()).toLocaleDateString('fr-FR', {
         day: '2-digit',

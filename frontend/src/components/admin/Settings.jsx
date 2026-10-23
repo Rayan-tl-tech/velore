@@ -118,8 +118,8 @@ export default function Settings() {
                   JWT SECURED
                 </span>
               </div>
-              <p className="text-[#666]">Admin Email: <strong className="text-[#0A0A0A]">{user?.email || 'admin@velor.com'}</strong></p>
-              <p className="text-[#666]">Admin Name: <strong className="text-[#0A0A0A]">{user?.name || 'VÉLOR Admin'}</strong></p>
+              <p className="text-[#666]">Admin Email: <strong className="text-[#0A0A0A]">{user?.email || 'N/A'}</strong></p>
+              <p className="text-[#666]">Admin Name: <strong className="text-[#0A0A0A]">{user?.name || 'Administrator'}</strong></p>
             </div>
           </div>
         </div>

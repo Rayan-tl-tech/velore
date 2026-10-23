@@ -18,6 +18,7 @@ import Orders from './components/admin/Orders';
 import Customers from './components/admin/Customers';
 import Categories from './components/admin/Categories';
 import Settings from './components/admin/Settings';
+import AdminRoute from './components/admin/AdminRoute';
 import ShoppingBagDrawer from './components/cart/ShoppingBagDrawer';
 import ProductDetailModal from './components/catalog/ProductDetailModal';
 import OrdersModal from './components/orders/OrdersModal';
@@ -258,12 +259,55 @@ function MainLayout() {
         />
         <Route path="/signin" element={<SignIn onShowToast={showToast} />} />
         <Route path="/register" element={<SignUp onShowToast={showToast} />} />
-        <Route path="/admin" element={<Overview />} />
-        <Route path="/admin/products" element={<Products />} />
-        <Route path="/admin/orders" element={<Orders />} />
-        <Route path="/admin/customers" element={<Customers />} />
-        <Route path="/admin/categories" element={<Categories />} />
-        <Route path="/admin/settings" element={<Settings />} />
+        {/* Protected Administrative Routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <Overview />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <AdminRoute>
+              <Products />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <AdminRoute>
+              <Orders />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/customers"
+          element={
+            <AdminRoute>
+              <Customers />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/categories"
+          element={
+            <AdminRoute>
+              <Categories />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/admin/settings"
+          element={
+            <AdminRoute>
+              <Settings />
+            </AdminRoute>
+          }
+        />
       </Routes>
 
       {/* Shopping Bag Drawer (Cart & Algerian Checkout) */}

@@ -12,6 +12,7 @@ import {
 } from '../controllers/userControler.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import roleMiddleware from '../middlewares/roleMiddleware.js';
+import { validateObjectIdParam } from '../middlewares/validateObjectId.js';
 
 const router = express.Router();
 
@@ -21,16 +22,13 @@ router.put('/profile', authMiddleware, updateProfileController);
 
 // User favorites routes (strictly authenticated, operating on req.user)
 router.get('/favorites', authMiddleware, getFavoritesController);
-router.post('/favorites/:productId', authMiddleware, addFavoriteController);
-router.delete('/favorites/:productId', authMiddleware, removeFavoriteController);
+router.post('/favorites/:productId', authMiddleware, validateObjectIdParam('productId'), addFavoriteController);
+router.delete('/favorites/:productId', authMiddleware, validateObjectIdParam('productId'), removeFavoriteController);
 
 // Administrative team / user management routes (Protected by JWT + Admin RBAC)
 router.get('/', authMiddleware, roleMiddleware('admin'), getAllUsersController);
-router.get('/:id', authMiddleware, roleMiddleware('admin'), getUserByIdController);
-router.put('/:id/roles', authMiddleware, roleMiddleware('admin'), updateUserRoleController);
-router.delete('/:id', authMiddleware, roleMiddleware('admin'), deleteUserController);
+router.get('/:id', authMiddleware, roleMiddleware('admin'), validateObjectIdParam('id'), getUserByIdController);
+router.put('/:id/roles', authMiddleware, roleMiddleware('admin'), validateObjectIdParam('id'), updateUserRoleController);
+router.delete('/:id', authMiddleware, roleMiddleware('admin'), validateObjectIdParam('id'), deleteUserController);
 
 export default router;
-
-
-

@@ -69,12 +69,17 @@ export const uploadImage = async (file, req = null) => {
         provider: 'cloudinary',
       };
     } catch (cloudErr) {
-      console.error('Cloudinary upload failed, falling back to local storage:', cloudErr.message);
-      // Fall through to local storage if Cloudinary fails
+      console.error('Cloudinary upload failed:', cloudErr.message);
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Image upload failed: Cloud storage service unavailable.');
+      }
+      // Fall through to local storage only in development mode
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    throw new Error('Cloud storage is not configured. Local fallback is disabled in production.');
   }
 
-  // 2. Local Static Storage fallback
+  // 2. Local Static Storage fallback (Development only)
   const host = req ? `${req.protocol}://${req.get('host')}` : '';
   const fileUrl = `${host}/uploads/${file.filename}`;
 

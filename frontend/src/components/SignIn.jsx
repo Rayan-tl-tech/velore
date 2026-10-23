@@ -65,12 +65,6 @@ export default function SignIn({ onShowToast }) {
     if (serverError) setServerError('');
   };
 
-  const handleFillDemo = (email, password) => {
-    setFormData({ email, password, remember: true });
-    setErrors({});
-    setServerError('');
-  };
-
   return (
     <AuthLayout
       imageSrc="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&h=1400&fit=crop"
@@ -149,29 +143,7 @@ export default function SignIn({ onShowToast }) {
           {submitting ? 'Authenticating...' : 'Sign In'}
         </button>
 
-        {/* Demo Credentials Helper */}
-        <div className="pt-2 text-center">
-          <p className="text-[11px] text-[#888] mb-2 tracking-wide">Quick Demo Accounts:</p>
-          <div className="flex justify-center gap-4 text-xs text-[#555]">
-            <button
-              type="button"
-              onClick={() => handleFillDemo('client@velor.com', 'Client1234!')}
-              className="hover:text-[#0A0A0A] underline underline-offset-2 cursor-pointer"
-            >
-              Customer Demo
-            </button>
-            <span className="text-[#CCC]">·</span>
-            <button
-              type="button"
-              onClick={() => handleFillDemo('admin@velor.com', 'Admin1234!')}
-              className="hover:text-[#0A0A0A] underline underline-offset-2 cursor-pointer"
-            >
-              Admin Demo
-            </button>
-          </div>
-        </div>
-
-        <p className="text-center text-sm text-[#666] pt-4">
+        <p className="text-center text-sm text-[#666] pt-6">
           Don't have an account?{' '}
           <Link to="/register" className="underline underline-offset-4 hover:text-[#0A0A0A] transition-colors">
             Create one

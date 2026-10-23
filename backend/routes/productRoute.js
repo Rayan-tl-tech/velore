@@ -7,9 +7,10 @@ import {
   deleteProduct,
   searchProducts,
 } from "../services/productService.js";
-import uploadMiddleware from "../middlewares/uploadMiddleware.js"; // ⚠️ utiliser ton middleware
+import uploadMiddleware from "../middlewares/uploadMiddleware.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import roleMiddleware from "../middlewares/roleMiddleware.js";
+import { validateObjectIdParam } from "../middlewares/validateObjectId.js";
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.post(
   "/",
   authMiddleware,
   roleMiddleware("admin"),
-  uploadMiddleware("image"), // ✅ au lieu de upload.single("image")
+  uploadMiddleware("image"),
   async (req, res, next) => {
     try {
       const product = await createProduct(req.body, req.file);
@@ -46,7 +47,7 @@ router.get("/search", async (req, res, next) => {
   }
 });
 
-router.get("/:id", async (req, res, next) => {
+router.get("/:id", validateObjectIdParam('id'), async (req, res, next) => {
   try {
     const product = await getProductById(req.params.id);
     res.json(product);
@@ -59,7 +60,8 @@ router.put(
   "/:id",
   authMiddleware,
   roleMiddleware("admin"),
-  uploadMiddleware("image"), // ✅ idem ici
+  validateObjectIdParam('id'),
+  uploadMiddleware("image"),
   async (req, res, next) => {
     try {
       const product = await updateProduct(req.params.id, req.body, req.file);
@@ -70,13 +72,19 @@ router.put(
   }
 );
 
-router.delete("/:id", authMiddleware, roleMiddleware("admin"), async (req, res, next) => {
-  try {
-    const product = await deleteProduct(req.params.id);
-    res.json(product);
-  } catch (error) {
-    next(error);
+router.delete(
+  "/:id",
+  authMiddleware,
+  roleMiddleware("admin"),
+  validateObjectIdParam('id'),
+  async (req, res, next) => {
+    try {
+      const product = await deleteProduct(req.params.id);
+      res.json(product);
+    } catch (error) {
+      next(error);
+    }
   }
-});
+);
 
 export default router;

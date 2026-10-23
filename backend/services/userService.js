@@ -11,14 +11,19 @@ const getProfile = async (userId) => {
 };
 
 const updateProfile = async (userId, updateData) => {
+  if (!updateData || typeof updateData !== 'object' || Array.isArray(updateData)) {
+    throw new Error('Invalid update data format');
+  }
   const allowedUpdates = {};
   if (updateData.name !== undefined) {
-    const trimmedName = String(updateData.name).trim();
+    if (typeof updateData.name !== 'string') throw new Error('Name must be a string');
+    const trimmedName = updateData.name.trim();
     if (!trimmedName) throw new Error('Name cannot be empty');
     allowedUpdates.name = trimmedName;
   }
   if (updateData.email !== undefined) {
-    const trimmedEmail = String(updateData.email).trim().toLowerCase();
+    if (typeof updateData.email !== 'string') throw new Error('Email must be a string');
+    const trimmedEmail = updateData.email.trim().toLowerCase();
     if (!trimmedEmail) throw new Error('Email cannot be empty');
     const existing = await User.findOne({ email: trimmedEmail, _id: { $ne: userId } });
     if (existing) {
@@ -27,16 +32,20 @@ const updateProfile = async (userId, updateData) => {
     allowedUpdates.email = trimmedEmail;
   }
   if (updateData.phone !== undefined) {
-    allowedUpdates.phone = String(updateData.phone).trim();
+    if (typeof updateData.phone !== 'string') throw new Error('Phone must be a string');
+    allowedUpdates.phone = updateData.phone.trim();
   }
   if (updateData.wilaya !== undefined) {
-    allowedUpdates.wilaya = String(updateData.wilaya).trim();
+    if (typeof updateData.wilaya !== 'string') throw new Error('Wilaya must be a string');
+    allowedUpdates.wilaya = updateData.wilaya.trim();
   }
   if (updateData.commune !== undefined) {
-    allowedUpdates.commune = String(updateData.commune).trim();
+    if (typeof updateData.commune !== 'string') throw new Error('Commune must be a string');
+    allowedUpdates.commune = updateData.commune.trim();
   }
   if (updateData.address !== undefined) {
-    allowedUpdates.address = String(updateData.address).trim();
+    if (typeof updateData.address !== 'string') throw new Error('Address must be a string');
+    allowedUpdates.address = updateData.address.trim();
   }
 
   const user = await User.findByIdAndUpdate(userId, allowedUpdates, { returnDocument: 'after', runValidators: true }).select('-password');

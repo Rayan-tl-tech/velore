@@ -12,6 +12,9 @@ const getJwtSecret = () => {
   return secret;
 };
 
+// SEC-10: Reduced JWT access token lifespan (30 minutes default)
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30m';
+
 const sanitizeUser = (userDoc) => {
   const userObj = userDoc?.toObject ? userDoc.toObject() : { ...userDoc };
   delete userObj.password;
@@ -34,9 +37,15 @@ const COMMON_WEAK_PASSWORDS = new Set([
 ]);
 
 const registerUser = async (userData) => {
+  if (!userData || typeof userData !== 'object') {
+    throw new Error('Invalid request payload');
+  }
   const { name, email, password } = userData;
   if (!name || !email || !password) {
     throw new Error('Name, email, and password are required');
+  }
+  if (typeof name !== 'string' || typeof email !== 'string' || typeof password !== 'string') {
+    throw new Error('Name, email, and password must be valid strings');
   }
 
   const trimmedName = String(name).trim();
@@ -55,10 +64,9 @@ const registerUser = async (userData) => {
   }
 
   // Strengthened password policy for NEW registrations (SEC-09: minimum 6 characters)
-  if (typeof password !== 'string' || password.length < 6) {
+  if (password.length < 6) {
     throw new Error('Password must be at least 6 characters long');
   }
-
 
   const hasLetter = /[a-zA-Z]/.test(password);
   const hasNumber = /[0-9]/.test(password);
@@ -79,14 +87,20 @@ const registerUser = async (userData) => {
   });
 
   const secret = getJwtSecret();
-  const token = jwt.sign({ id: user._id, role: user.roles }, secret, { expiresIn: '30d' });
+  const token = jwt.sign({ id: user._id, role: user.roles }, secret, { expiresIn: JWT_EXPIRES_IN });
   return { user: sanitizeUser(user), token };
 };
 
 const loginUser = async (userData) => {
+  if (!userData || typeof userData !== 'object') {
+    throw new Error('Invalid email or password');
+  }
   const { email, password } = userData;
   if (!email || !password) {
     throw new Error('Email and password are required');
+  }
+  if (typeof email !== 'string' || typeof password !== 'string') {
+    throw new Error('Invalid email or password');
   }
   const normalizedEmail = String(email).trim().toLowerCase();
   const user = await User.findOne({ email: normalizedEmail });
@@ -100,7 +114,7 @@ const loginUser = async (userData) => {
     throw new Error('Invalid email or password');
   }
   const secret = getJwtSecret();
-  const token = jwt.sign({ id: user._id, role: user.roles }, secret, { expiresIn: '30d' });
+  const token = jwt.sign({ id: user._id, role: user.roles }, secret, { expiresIn: JWT_EXPIRES_IN });
   return { user: sanitizeUser(user), token };
 };
 
