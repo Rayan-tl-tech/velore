@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, Plus, Trash2, Edit3, X, RefreshCw, AlertCircle, CheckCircle, ArrowLeft, Eye, LayoutGrid, List, ArrowRight } from 'lucide-react';
+import { Search, Plus, Trash2, Edit3, X, RefreshCw, AlertCircle, CheckCircle, ArrowLeft, Eye, LayoutGrid, List, ArrowRight, UploadCloud, Loader2 } from 'lucide-react';
 import AdminLayout from './AdminLayout';
-import { getAllProducts, createProduct, deleteProduct, updateProduct } from '../../services/api/productService';
+import { getAllProducts, createProduct, deleteProduct, updateProduct, uploadProductImage } from '../../services/api/productService';
 import { getAllCategories } from '../../services/api/categoryService';
 import { formatPrice } from '../../data/products';
 import { useAuth } from '../../context/AuthContext';
@@ -61,6 +61,13 @@ export default function Products() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
+  // Image upload state
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -102,6 +109,10 @@ export default function Products() {
       description: '',
       image: '',
     });
+    setImagePreview('');
+    setImageUploadError(null);
+    setUploadingImage(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -116,8 +127,76 @@ export default function Products() {
       description: p.description || '',
       image: p.image || '',
     });
+    setImagePreview(p.image || '');
+    setImageUploadError(null);
+    setUploadingImage(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setFormError(null);
     setIsModalOpen(true);
+  };
+
+  const processSelectedFile = async (file) => {
+    if (!file) return;
+
+    setImageUploadError(null);
+
+    // 1. Client-side format validation
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const extension = file.name?.split('.').pop()?.toLowerCase();
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
+      setImageUploadError('Invalid format. Please select a JPG, PNG, or WebP image.');
+      return;
+    }
+
+    // 2. Client-side size validation (max 5MB)
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_SIZE) {
+      setImageUploadError(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 5MB.`);
+      return;
+    }
+
+    // 3. Instant local preview
+    const localPreviewUrl = URL.createObjectURL(file);
+    setImagePreview(localPreviewUrl);
+
+    // 4. Upload immediately to storage provider
+    try {
+      setUploadingImage(true);
+      const res = await uploadProductImage(file);
+      if (res && res.url) {
+        setFormData((prev) => ({ ...prev, image: res.url }));
+        setImagePreview(res.url);
+      } else {
+        throw new Error('No image URL returned from storage');
+      }
+    } catch (err) {
+      console.error('Image upload failed:', err);
+      const msg = err.response?.data?.message || err.message || 'Failed to upload image. Please try again.';
+      setImageUploadError(msg);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleFileInputChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processSelectedFile(file);
+    }
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImagePreview('');
+    setFormData((prev) => ({ ...prev, image: '' }));
+    setImageUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -125,6 +204,7 @@ export default function Products() {
     if (!formData.name.trim()) return setFormError('Product name is required');
     if (!formData.price || Number(formData.price) <= 0) return setFormError('Valid price is required');
     if (formData.stock === '' || Number(formData.stock) < 0) return setFormError('Valid stock quantity is required');
+    if (uploadingImage) return setFormError('Please wait for the image upload to complete before saving.');
 
     try {
       setSubmitting(true);
@@ -151,7 +231,7 @@ export default function Products() {
       await loadData();
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err) {
-      setFormError(err.message || 'Failed to save product');
+      setFormError(err.response?.data?.message || err.message || 'Failed to save product');
     } finally {
       setSubmitting(false);
     }
@@ -656,33 +736,136 @@ export default function Products() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                    Stock Quantity *
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={formData.stock}
-                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                    placeholder="e.g. 25"
-                    className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                    Image URL
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
+                  Stock Quantity *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.stock}
+                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  placeholder="e.g. 25"
+                  className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
+                  Product Image
+                </label>
+
+                {imagePreview ? (
+                  <div className="relative border border-[#E8E8E8] bg-[#FAFAFA] p-3.5 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-28 h-28 sm:w-32 sm:h-32 bg-[#F0F0F0] border border-[#E0E0E0] shrink-0 overflow-hidden flex items-center justify-center">
+                      <img
+                        src={imagePreview}
+                        alt="Product preview"
+                        className="w-full h-full object-cover"
+                      />
+                      {uploadingImage && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white p-2 text-center">
+                          <Loader2 className="w-5 h-5 animate-spin mb-1 text-white" />
+                          <span className="text-[10px] tracking-wider uppercase font-medium">Uploading...</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 w-full flex flex-col justify-between py-1">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-medium text-[#0A0A0A]">
+                            {uploadingImage ? 'Uploading image...' : 'Image ready'}
+                          </span>
+                          {!uploadingImage && formData.image && (
+                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">
+                              <CheckCircle size={10} /> Uploaded
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-[#777] mb-3">
+                          {uploadingImage
+                            ? 'Transmitting file to storage provider...'
+                            : 'This image will be displayed on the storefront and product catalog.'}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadingImage}
+                          className="px-3 py-1.5 text-xs tracking-wider uppercase border border-[#D0D0D0] hover:border-[#0A0A0A] bg-white text-[#0A0A0A] transition-colors disabled:opacity-50"
+                        >
+                          Replace Image
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          disabled={uploadingImage}
+                          className="px-3 py-1.5 text-xs tracking-wider uppercase text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        processSelectedFile(e.dataTransfer.files[0]);
+                      }
+                    }}
+                    className={`border-2 border-dashed transition-all cursor-pointer p-6 sm:p-8 text-center flex flex-col items-center justify-center gap-2 ${
+                      isDragging
+                        ? 'border-[#0A0A0A] bg-[#F5F5F5]'
+                        : 'border-[#D0D0D0] hover:border-[#0A0A0A] bg-[#FAFAFA] hover:bg-[#F7F7F7]'
+                    }`}
+                  >
+                    <div className="w-10 h-10 rounded-full bg-white border border-[#E5E5E5] flex items-center justify-center text-[#666] mb-1">
+                      <UploadCloud size={18} />
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wider font-medium text-[#0A0A0A]">
+                        Upload Product Image
+                      </p>
+                      <p className="text-xs text-[#777] mt-0.5">
+                        Click to choose an image from your device or drag and drop
+                      </p>
+                    </div>
+                    <p className="text-[10px] tracking-wider uppercase text-[#999] mt-1">
+                      JPG, PNG, WebP · Max 5MB
+                    </p>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+
+                {imageUploadError && (
+                  <div className="mt-2 bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 text-xs flex items-center gap-2">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>{imageUploadError}</span>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -708,10 +891,10 @@ export default function Products() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || uploadingImage}
                   className="bg-[#0A0A0A] text-white px-5 py-2 text-xs tracking-wider uppercase hover:bg-[#333333] transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
+                  {uploadingImage ? 'Uploading image...' : submitting ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
                 </button>
               </div>
             </form>

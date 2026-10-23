@@ -24,15 +24,21 @@ export default function CollectionSection({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 lg:gap-x-6 gap-y-10 lg:gap-y-14">
-          {(products || []).map((product, idx) => (
-            <ProductCard
-              key={product._id || product.id}
-              product={product}
-              index={idx}
-              onProductClick={onProductClick}
-              onShowToast={onShowToast}
-            />
-          ))}
+          {(products || []).length > 0 ? (
+            products.map((product, idx) => (
+              <ProductCard
+                key={product._id || product.id}
+                product={product}
+                index={idx}
+                onProductClick={onProductClick}
+                onShowToast={onShowToast}
+              />
+            ))
+          ) : (
+            <div className="col-span-full py-12 text-center text-sm text-[#777] italic bg-black/[0.02] border border-dashed border-[#DDD]">
+              Pieces for this collection will be unveiled shortly.
+            </div>
+          )}
         </div>
       </div>
     </section>

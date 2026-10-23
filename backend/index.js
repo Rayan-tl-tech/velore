@@ -26,6 +26,7 @@ import categorieRoute from './routes/categorieRoute.js';
 import productRoute from './routes/productRoute.js';
 import cartRoute from './routes/cartRoute.js';
 import orderRoute from './routes/orderRoute.js';
+import uploadRoute from './routes/uploadRoute.js';
 
 const app = express();
 
@@ -156,6 +157,7 @@ app.use('/api/categories', categorieRoute);
 app.use('/api/products', productRoute);
 app.use('/api/cart', cartRoute);
 app.use('/api/orders', orderRoute);
+app.use('/api/upload', uploadRoute);
 
 // Hardened static uploads serving
 app.use(

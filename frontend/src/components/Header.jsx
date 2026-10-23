@@ -9,9 +9,8 @@ import { getInitials } from '../utils/formatters';
 const navLinks = [
   { label: 'Home', href: '#home' },
   { label: 'New Arrivals', href: '#new-arrivals' },
-  { label: 'Men', href: '#men' },
-  { label: 'Women', href: '#women' },
-  { label: 'Kids', href: '#kids' },
+  { label: 'Categories', href: '#categories' },
+  { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
 ];
 

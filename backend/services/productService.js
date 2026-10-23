@@ -1,21 +1,18 @@
 import fs from 'fs';
 import productModel from '../models/productModel.js';
-
-// Store uploaded file path so images are served efficiently as static assets
-const processImage = (data, file) => {
-  if (file && file.filename) {
-    return `/uploads/${file.filename}`;
-  }
-  if (data?.image && typeof data.image === 'string' && data.image.trim()) {
-    return data.image.trim();
-  }
-  return null;
-};
+import { uploadImage, deleteImage } from './storageService.js';
 
 // Créer un produit
 export const createProduct = async (data, file) => {
   const { name, description, price, stock, category } = data;
-  const image = processImage(data, file);
+  let image = null;
+
+  if (file) {
+    const uploadResult = await uploadImage(file);
+    image = uploadResult.url;
+  } else if (data?.image && typeof data.image === 'string' && data.image.trim()) {
+    image = data.image.trim();
+  }
 
   if (price === undefined || price === null || price === '' || !Number.isFinite(Number(price))) {
     const err = new Error('Price is required and must be a valid number');
@@ -68,6 +65,13 @@ export const getProductById = async (id) => {
 
 // Mettre à jour un produit
 export const updateProduct = async (id, data, file) => {
+  const existingProduct = await productModel.findById(id);
+  if (!existingProduct) {
+    const err = new Error('Product not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
   const updateData = {};
 
   if (data.name !== undefined) updateData.name = data.name;
@@ -101,10 +105,20 @@ export const updateProduct = async (id, data, file) => {
     updateData.stock = parsedStock;
   }
   if (data.category !== undefined) updateData.category = data.category;
+
   if (file) {
-    updateData.image = processImage(data, file);
+    const uploadResult = await uploadImage(file);
+    updateData.image = uploadResult.url;
+    // Safely delete previous image if replaced
+    if (existingProduct.image && existingProduct.image !== updateData.image) {
+      await deleteImage(existingProduct.image);
+    }
   } else if (data.image !== undefined) {
-    updateData.image = data.image ? String(data.image).trim() : null;
+    const newImageUrl = data.image ? String(data.image).trim() : null;
+    updateData.image = newImageUrl;
+    if (existingProduct.image && newImageUrl && existingProduct.image !== newImageUrl) {
+      await deleteImage(existingProduct.image);
+    }
   }
 
   return await productModel
@@ -114,6 +128,10 @@ export const updateProduct = async (id, data, file) => {
 
 // Supprimer un produit
 export const deleteProduct = async (id) => {
+  const product = await productModel.findById(id);
+  if (product?.image) {
+    await deleteImage(product.image);
+  }
   return await productModel.findByIdAndDelete(id);
 };
 

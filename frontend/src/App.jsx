@@ -28,6 +28,7 @@ import { useToast } from './components/ui/useToast';
 import ScrollReveal from './components/ui/ScrollReveal';
 import { products } from './data/products';
 import { getAllProducts } from './services/api/productService';
+import { getAllCategories } from './services/api/categoryService';
 
 function HomePage({
   onProductClick,
@@ -37,39 +38,50 @@ function HomePage({
   onShowToast,
 }) {
   const [catalog, setCatalog] = useState(products);
+  const [categories, setCategories] = useState([
+    { name: 'Men', _id: 'men' },
+    { name: 'Women', _id: 'women' },
+    { name: 'Kids', _id: 'kids' },
+  ]);
 
   useEffect(() => {
     let active = true;
-    getAllProducts()
-      .then((live) => {
-        if (!active || !Array.isArray(live) || live.length === 0) return;
-        setCatalog((current) =>
-          current.map((item) => {
-            const matched = live.find(
-              (p) => p.name?.toLowerCase().trim() === item.name?.toLowerCase().trim()
-            );
-            if (matched) {
-              return {
-                ...item,
-                _id: matched._id,
-                price: matched.price ?? item.price,
-                stock: matched.stock ?? item.stock,
-              };
-            }
-            return item;
-          })
-        );
-      })
-      .catch(() => {});
+    Promise.all([
+      getAllProducts().catch(() => []),
+      getAllCategories().catch(() => []),
+    ]).then(([liveProducts, liveCategories]) => {
+      if (!active) return;
+
+      if (Array.isArray(liveCategories) && liveCategories.length > 0) {
+        setCategories(liveCategories);
+      }
+
+      if (Array.isArray(liveProducts) && liveProducts.length > 0) {
+        // Merge preset details with all live products from MongoDB
+        const combined = liveProducts.map((liveItem) => {
+          const preset = products.find(
+            (p) => p.name?.toLowerCase().trim() === liveItem.name?.toLowerCase().trim()
+          );
+          return {
+            ...preset,
+            ...liveItem,
+            _id: liveItem._id || preset?._id,
+            price: liveItem.price ?? preset?.price,
+            stock: liveItem.stock ?? preset?.stock,
+            image: liveItem.image || preset?.image,
+            category: liveItem.category || preset?.category,
+          };
+        });
+        setCatalog(combined);
+      }
+    });
+
     return () => {
       active = false;
     };
   }, []);
 
   const newArrivals = catalog.filter((p) => p.collection === 'new-arrivals');
-  const menProducts = catalog.filter((p) => p.collection === 'men');
-  const womenProducts = catalog.filter((p) => p.collection === 'women');
-  const kidsProducts = catalog.filter((p) => p.collection === 'kids');
 
   return (
     <div className="min-h-screen bg-white">
@@ -83,7 +95,7 @@ function HomePage({
         <Hero />
 
         <ScrollReveal>
-          <CategoryCards />
+          <CategoryCards categories={categories} products={catalog} />
         </ScrollReveal>
 
         <section id="new-arrivals">
@@ -98,43 +110,43 @@ function HomePage({
           </ScrollReveal>
         </section>
 
-        <section id="men" className="bg-[#F7F6F2]">
-          <ScrollReveal>
-            <CollectionSection
-              label="Collection / 01"
-              title="Men's collection"
-              description="Clean proportions, practical layers, and everyday pieces with a precise point of view."
-              products={menProducts}
-              onProductClick={onProductClick}
-              onShowToast={onShowToast}
-            />
-          </ScrollReveal>
-        </section>
+        {/* Dynamic Category Collections (Men, Women, Kids, and any new categories from MongoDB) */}
+        {categories.map((cat, index) => {
+          const catName = typeof cat === 'object' ? cat.name : cat;
+          const catId = typeof cat === 'object' ? cat._id : cat;
+          const slug = catName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-        <section id="women">
-          <ScrollReveal>
-            <CollectionSection
-              title="Women's collection"
-              description="Fluid tailoring and modern essentials designed for a versatile wardrobe."
-              products={womenProducts}
-              onProductClick={onProductClick}
-              onShowToast={onShowToast}
-            />
-          </ScrollReveal>
-        </section>
+          const catProducts = catalog.filter((p) => {
+            const pCatName = typeof p.category === 'object' ? p.category?.name : p.category;
+            const pCatId = typeof p.category === 'object' ? p.category?._id : p.category;
+            return (
+              (pCatName && pCatName.toLowerCase() === catName.toLowerCase()) ||
+              (pCatId && String(pCatId) === String(catId)) ||
+              (p.collection && p.collection.toLowerCase() === catName.toLowerCase())
+            );
+          });
 
-        <section id="kids" className="bg-[#F7F6F2]">
-          <ScrollReveal>
-            <CollectionSection
-              label="Collection / 03"
-              title="Kids' collection"
-              description="Comfortable, durable pieces with freedom to move and a refined sense of simplicity."
-              products={kidsProducts}
-              onProductClick={onProductClick}
-              onShowToast={onShowToast}
-            />
-          </ScrollReveal>
-        </section>
+          const isEven = index % 2 === 0;
+
+          return (
+            <section
+              key={catId || catName}
+              id={slug}
+              className={isEven ? 'bg-[#F7F6F2]' : 'bg-white'}
+            >
+              <ScrollReveal>
+                <CollectionSection
+                  label={`Collection / 0${index + 1}`}
+                  title={`${catName.charAt(0).toUpperCase() + catName.slice(1)} collection`}
+                  description={`Clean proportions, practical layers, and everyday pieces from our ${catName.toLowerCase()} collection.`}
+                  products={catProducts}
+                  onProductClick={onProductClick}
+                  onShowToast={onShowToast}
+                />
+              </ScrollReveal>
+            </section>
+          );
+        })}
 
         {/* Section: About VÉLOR */}
         <ScrollReveal as="section" id="about" className="py-24 lg:py-32 bg-white border-t border-[#E8E8E8]">
