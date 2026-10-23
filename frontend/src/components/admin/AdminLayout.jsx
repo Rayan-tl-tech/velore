@@ -51,13 +51,13 @@ export default function AdminLayout({ children }) {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#F5F5F5]">
+    <div className="min-h-screen flex bg-[#F5F5F5] w-full">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#0A0A0A] text-white flex flex-col fixed h-screen z-20">
-        <div className="p-8 border-b border-white/10 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3 group">
-            <h1 className="font-serif-display text-2xl tracking-[0.15em]">VÉLOR</h1>
-            <span className="text-xs tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">
+      <aside className="w-60 xl:w-64 shrink-0 bg-[#0A0A0A] text-white flex flex-col fixed top-0 left-0 bottom-0 h-screen z-20">
+        <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <h1 className="font-serif-display text-xl tracking-[0.15em]">VÉLOR</h1>
+            <span className="text-[10px] tracking-[0.2em] text-white/50 group-hover:text-white transition-colors">
               ADMIN
             </span>
           </Link>
@@ -70,37 +70,35 @@ export default function AdminLayout({ children }) {
           </Link>
         </div>
 
-        <nav className="flex-1 py-6">
+        <nav className="flex-1 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center gap-4 px-8 py-4 text-sm transition-colors ${
+                className={`flex items-center gap-3.5 px-6 py-3 text-xs tracking-wider uppercase transition-colors ${
                   isActive
-                    ? 'bg-white/5 border-l-2 border-white text-white font-medium'
+                    ? 'bg-white/10 border-l-2 border-white text-white font-medium'
                     : 'text-white/60 hover:text-white hover:bg-white/5'
                 }`}
               >
-                <item.icon size={20} strokeWidth={1.5} />
+                <item.icon size={17} strokeWidth={1.5} />
                 {item.label}
               </Link>
             );
           })}
         </nav>
 
-
-
         {/* User Card */}
-        <div className="p-8 border-t border-white/10 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 rounded-full bg-white text-[#0A0A0A] flex items-center justify-center text-xs font-medium shrink-0">
+            <div className="w-8 h-8 rounded-full bg-white text-[#0A0A0A] flex items-center justify-center text-xs font-medium shrink-0">
               {userInitials}
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate">{user?.name || (isAdmin ? 'Admin' : 'Guest Admin')}</p>
-              <p className="text-xs text-white/50 truncate">
+              <p className="text-xs font-medium truncate">{user?.name || (isAdmin ? 'Admin' : 'Guest Admin')}</p>
+              <p className="text-[10px] text-white/50 truncate">
                 {isAdmin ? 'Master Admin' : 'Demo Profile'}
               </p>
             </div>
@@ -111,45 +109,45 @@ export default function AdminLayout({ children }) {
               title="Sign Out"
               className="text-white/40 hover:text-red-400 p-1.5 transition-colors shrink-0"
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
             </button>
           )}
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-64 min-w-0">
-        <header className="bg-white border-b border-[#E8E8E8] px-8 py-6 sticky top-0 z-10">
-          <div className="flex items-center justify-between mb-4">
+      <div className="flex-1 ml-60 xl:ml-64 flex flex-col min-w-0">
+        <header className="bg-white border-b border-[#E8E8E8] px-6 lg:px-8 py-4 sticky top-0 z-10 shrink-0">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-1">VÉLOR ADMIN</p>
-              <h1 className="font-serif-display text-4xl font-normal">{currentPage}</h1>
+              <p className="text-[10px] tracking-[0.2em] uppercase text-[#666] mb-0.5">VÉLOR ADMIN</p>
+              <h1 className="font-serif-display text-2xl lg:text-3xl font-normal text-[#0A0A0A]">{currentPage}</h1>
             </div>
 
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-3 bg-[#F5F5F5] px-4 py-2.5 rounded">
-                <Search size={18} strokeWidth={1.5} className="text-[#666]" />
+            <div className="flex items-center gap-4 lg:gap-6">
+              <div className="flex items-center gap-2.5 bg-[#F5F5F5] px-3.5 py-2 rounded">
+                <Search size={16} strokeWidth={1.5} className="text-[#666]" />
                 <input
                   type="text"
                   placeholder="Quick search..."
-                  className="bg-transparent text-sm focus:outline-none w-44"
+                  className="bg-transparent text-xs focus:outline-none w-36 sm:w-44"
                 />
               </div>
 
               <Link
                 to="/"
-                className="text-xs tracking-wider uppercase border border-[#0A0A0A] px-4 py-2.5 hover:bg-[#0A0A0A] hover:text-white transition-colors"
+                className="text-xs tracking-wider uppercase border border-[#0A0A0A] px-3.5 py-2 hover:bg-[#0A0A0A] hover:text-white transition-colors shrink-0"
               >
                 Storefront →
               </Link>
 
               <div className="flex items-center gap-3 pl-2 border-l border-[#E8E8E8]">
-                <div className="w-10 h-10 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center text-xs font-medium">
+                <div className="w-8 h-8 rounded-full bg-[#0A0A0A] text-white flex items-center justify-center text-xs font-medium shrink-0">
                   {userInitials}
                 </div>
                 <div className="hidden md:block">
-                  <p className="text-sm font-medium leading-tight">{user?.name || (isAdmin ? 'Admin' : 'Guest')}</p>
-                  <p className="text-xs text-[#666]">{isAdmin ? 'Administrator' : 'Read-Only Mode'}</p>
+                  <p className="text-xs font-medium leading-tight text-[#0A0A0A]">{user?.name || (isAdmin ? 'Admin' : 'Guest')}</p>
+                  <p className="text-[10px] text-[#666]">{isAdmin ? 'Administrator' : 'Read-Only Mode'}</p>
                 </div>
               </div>
             </div>
@@ -158,25 +156,25 @@ export default function AdminLayout({ children }) {
 
         {/* Quick Admin Auth Banner if not authenticated as admin */}
         {!isAdmin && (
-          <div className="bg-[#0A0A0A] text-white px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border-b border-white/10">
+          <div className="bg-[#0A0A0A] text-white px-6 lg:px-8 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs border-b border-white/10 shrink-0">
             <div className="flex items-center gap-2.5">
-              <KeyRound size={16} className="text-amber-400 shrink-0" />
-              <span>
+              <KeyRound size={15} className="text-amber-400 shrink-0" />
+              <span className="text-[11px] sm:text-xs">
                 To create products, update order statuses, or manage customer roles, authenticate with an administrator account.
               </span>
             </div>
-            <div className="flex items-center gap-3">
-              {authError && <span className="text-red-400">{authError}</span>}
+            <div className="flex items-center gap-3 shrink-0">
+              {authError && <span className="text-red-400 text-xs">{authError}</span>}
               <button
                 onClick={handleQuickAdminLogin}
                 disabled={loggingIn}
-                className="bg-white text-[#0A0A0A] px-4 py-1.5 font-medium hover:bg-white/90 transition-colors uppercase tracking-wider text-[11px] disabled:opacity-50"
+                className="bg-white text-[#0A0A0A] px-3.5 py-1.5 font-medium hover:bg-white/90 transition-colors uppercase tracking-wider text-[10px] disabled:opacity-50"
               >
                 {loggingIn ? 'Connecting...' : 'One-Click Admin Login'}
               </button>
               <Link
                 to="/signin"
-                className="text-white/70 hover:text-white underline underline-offset-2"
+                className="text-white/70 hover:text-white underline underline-offset-2 text-[11px]"
               >
                 Custom Sign In
               </Link>
@@ -184,7 +182,7 @@ export default function AdminLayout({ children }) {
           </div>
         )}
 
-        <main key={location.pathname} className="p-8 animate-admin-view">
+        <main key={location.pathname} className="p-6 lg:p-8 animate-admin-view flex-1">
           {children}
         </main>
       </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, RefreshCw, AlertCircle, CheckCircle, Eye, X } from 'lucide-react';
 import AdminLayout from './AdminLayout';
 import { getAllOrders, updateOrderStatus } from '../../services/api/orderService';
@@ -271,10 +272,10 @@ export default function Orders() {
       </div>
 
       {/* Order Detail Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-xl border border-[#E8E8E8] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-6 border-b border-[#E8E8E8]">
+      {selectedOrder && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-xl border border-[#E8E8E8] shadow-2xl overflow-hidden max-h-[90vh] flex flex-col my-auto">
+            <div className="flex items-center justify-between p-6 border-b border-[#E8E8E8] shrink-0">
               <div>
                 <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-1">
                   Order Details
@@ -291,7 +292,7 @@ export default function Orders() {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-6">
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* Customer & Shipping Summary */}
               <div className="grid grid-cols-2 gap-4 bg-[#F9F9F9] p-4 text-xs">
                 <div>
@@ -348,7 +349,7 @@ export default function Orders() {
               </div>
             </div>
 
-            <div className="p-6 border-t border-[#E8E8E8] bg-[#FAFAFA] flex items-center justify-between">
+            <div className="p-6 border-t border-[#E8E8E8] bg-[#FAFAFA] flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs uppercase text-[#666]">Change Status:</span>
                 <select
@@ -374,7 +375,8 @@ export default function Orders() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   );

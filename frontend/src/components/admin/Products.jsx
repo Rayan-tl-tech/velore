@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search, Plus, Trash2, Edit3, X, RefreshCw, AlertCircle, CheckCircle, ArrowLeft, Eye, LayoutGrid, List, ArrowRight } from 'lucide-react';
 import AdminLayout from './AdminLayout';
@@ -270,87 +271,89 @@ export default function Products() {
       )}
 
       {/* Filter and Action Bar */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 mb-8">
-        <div className="flex-1 flex items-center gap-3 bg-white border border-[#E8E8E8] px-4 py-3">
-          <Search size={18} strokeWidth={1.5} className="text-[#666]" />
+      <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 mb-6">
+        <div className="flex-1 flex items-center gap-2.5 bg-white border border-[#E8E8E8] px-3.5 py-2.5 min-w-0">
+          <Search size={16} strokeWidth={1.5} className="text-[#666] shrink-0" />
           <input
             type="text"
             placeholder="Search products by name or ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 bg-transparent text-sm focus:outline-none"
+            className="flex-1 bg-transparent text-xs focus:outline-none min-w-0"
           />
         </div>
 
-        <select
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="bg-white border border-[#E8E8E8] px-4 py-3 text-sm focus:outline-none"
-        >
-          <option>All categories</option>
-          {categories.map((c) => (
-            <option key={c._id || c.name} value={c.name}>
-              {c.name}
-            </option>
-          ))}
-          <option>Men</option>
-          <option>Women</option>
-          <option>Kids</option>
-        </select>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-white border border-[#E8E8E8] px-3 py-2 text-xs focus:outline-none"
+          >
+            <option>All categories</option>
+            {categories.map((c) => (
+              <option key={c._id || c.name} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+            <option>Men</option>
+            <option>Women</option>
+            <option>Kids</option>
+          </select>
 
-        {/* Stock Status Filter */}
-        <select
-          value={stockFilter}
-          onChange={(e) => handleStockFilterChange(e.target.value)}
-          className="bg-white border border-[#E8E8E8] px-4 py-3 text-sm focus:outline-none"
-        >
-          <option value="all">All stock levels</option>
-          <option value="in_stock">In stock (&gt; 5 units)</option>
-          <option value="low_stock">Low stock (1–5 units)</option>
-          <option value="out_of_stock">Out of stock (0 units)</option>
-        </select>
+          {/* Stock Status Filter */}
+          <select
+            value={stockFilter}
+            onChange={(e) => handleStockFilterChange(e.target.value)}
+            className="bg-white border border-[#E8E8E8] px-3 py-2 text-xs focus:outline-none"
+          >
+            <option value="all">All stock levels</option>
+            <option value="in_stock">In stock (&gt; 5 units)</option>
+            <option value="low_stock">Low stock (1–5 units)</option>
+            <option value="out_of_stock">Out of stock (0 units)</option>
+          </select>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-white border border-[#E8E8E8] px-4 py-3 text-sm focus:outline-none"
-        >
-          <option>All statuses</option>
-          <option value="ACTIVE">ACTIVE (In Stock)</option>
-          <option value="DRAFT">DRAFT (Out of Stock)</option>
-        </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-white border border-[#E8E8E8] px-3 py-2 text-xs focus:outline-none"
+          >
+            <option>All statuses</option>
+            <option value="ACTIVE">ACTIVE (In Stock)</option>
+            <option value="DRAFT">DRAFT (Out of Stock)</option>
+          </select>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center border border-[#E8E8E8] bg-white p-1">
+          <div className="flex items-center gap-2 shrink-0 ml-auto xl:ml-0">
+            <div className="flex items-center border border-[#E8E8E8] bg-white p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                title="Card Grid View"
+                className={`p-1.5 transition-colors cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-[#0A0A0A] text-white' : 'text-[#666] hover:text-[#0A0A0A]'
+                }`}
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                title="Table View"
+                className={`p-1.5 transition-colors cursor-pointer ${
+                  viewMode === 'table' ? 'bg-[#0A0A0A] text-white' : 'text-[#666] hover:text-[#0A0A0A]'
+                }`}
+              >
+                <List size={14} />
+              </button>
+            </div>
+
             <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              title="Card Grid View"
-              className={`p-2 transition-colors cursor-pointer ${
-                viewMode === 'grid' ? 'bg-[#0A0A0A] text-white' : 'text-[#666] hover:text-[#0A0A0A]'
-              }`}
+              onClick={openAddModal}
+              className="bg-[#0A0A0A] text-white px-4 py-2.5 text-xs tracking-[0.15em] uppercase font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 shrink-0"
             >
-              <LayoutGrid size={15} />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              title="Table View"
-              className={`p-2 transition-colors cursor-pointer ${
-                viewMode === 'table' ? 'bg-[#0A0A0A] text-white' : 'text-[#666] hover:text-[#0A0A0A]'
-              }`}
-            >
-              <List size={15} />
+              <Plus size={15} strokeWidth={1.5} />
+              Add Product
             </button>
           </div>
-
-          <button
-            onClick={openAddModal}
-            className="bg-[#0A0A0A] text-white px-6 py-3 text-xs tracking-[0.15em] uppercase font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 shrink-0"
-          >
-            <Plus size={16} strokeWidth={1.5} />
-            Add Product
-          </button>
         </div>
       </div>
 
@@ -518,38 +521,38 @@ export default function Products() {
 
                     return (
                       <tr key={product._id} className="border-b border-[#E8E8E8] last:border-0 hover:bg-[#FAFAFA] transition-colors">
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-4">
+                        <td className="py-3 px-4 lg:px-6">
+                          <div className="flex items-center gap-3">
                             <img
                               src={product.image || 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=200&h=200&fit=crop'}
                               alt={product.name}
-                              className="w-16 h-20 object-cover bg-[#F0F0F0]"
+                              className="w-12 h-14 object-cover bg-[#F0F0F0] shrink-0"
                               onError={(e) => {
                                 e.target.src = 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=200&h=200&fit=crop';
                               }}
                             />
-                            <div>
-                              <p className="text-sm font-medium mb-1 text-[#0A0A0A]">{product.name}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium mb-0.5 text-[#0A0A0A] truncate max-w-xs">{product.name}</p>
                               <p className="text-xs text-[#666] line-clamp-1 max-w-xs">{product.description || 'VÉLOR Collection Piece'}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-sm">{catName || 'Uncategorized'}</td>
-                        <td className="py-4 px-6 text-sm font-medium">{formatPrice(product.price)}</td>
-                        <td className="py-4 px-6 text-sm">
+                        <td className="py-3 px-4 lg:px-6 text-sm">{catName || 'Uncategorized'}</td>
+                        <td className="py-3 px-4 lg:px-6 text-sm font-medium">{formatPrice(product.price)}</td>
+                        <td className="py-3 px-4 lg:px-6 text-sm">
                           <span className={inStock ? 'font-medium' : 'text-red-500 font-medium'}>
                             {product.stock} units
                           </span>
                         </td>
-                        <td className="py-4 px-6">
-                          <span className={`inline-block px-3 py-1 text-xs tracking-[0.1em] uppercase ${statusColors[statusKey]}`}>
+                        <td className="py-3 px-4 lg:px-6">
+                          <span className={`inline-block px-2.5 py-0.5 text-[11px] tracking-[0.1em] uppercase ${statusColors[statusKey]}`}>
                             {statusKey}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-xs text-[#666] font-mono">
+                        <td className="py-3 px-4 lg:px-6 text-xs text-[#666] font-mono">
                           {String(product._id).slice(-6).toUpperCase()}
                         </td>
-                        <td className="py-4 px-6 text-right">
+                        <td className="py-3 px-4 lg:px-6 text-right">
                           <div className="inline-flex items-center gap-2">
                             <button
                               onClick={() => openEditModal(product)}
@@ -578,29 +581,29 @@ export default function Products() {
       )}
 
       {/* Add / Edit Product Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-lg border border-[#E8E8E8] shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-[#E8E8E8]">
+      {isModalOpen && createPortal(
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="bg-white w-full max-w-lg border border-[#E8E8E8] shadow-2xl flex flex-col max-h-[90vh] my-auto">
+            <div className="flex items-center justify-between p-5 sm:p-6 border-b border-[#E8E8E8] shrink-0">
               <div>
-                <p className="text-xs tracking-[0.2em] uppercase text-[#666] mb-1">
+                <p className="text-[10px] tracking-[0.2em] uppercase text-[#666] mb-1">
                   {editingProduct ? 'Update Product' : 'New Catalog Item'}
                 </p>
-                <h3 className="font-serif-display text-2xl">
+                <h3 className="font-serif-display text-xl sm:text-2xl">
                   {editingProduct ? 'Edit Product' : 'Add New Product'}
                 </h3>
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 text-[#666] hover:text-[#0A0A0A] transition-colors"
+                className="p-1.5 text-[#666] hover:text-[#0A0A0A] transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 text-xs">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-2 text-xs">
                   {formError}
                 </div>
               )}
@@ -614,12 +617,12 @@ export default function Products() {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g. Essential Tailored Coat"
-                  className="w-full border border-[#D0D0D0] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#0A0A0A]"
+                  className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
                     Category
@@ -627,7 +630,7 @@ export default function Products() {
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full border border-[#D0D0D0] px-3 py-2.5 text-sm focus:outline-none focus:border-[#0A0A0A] bg-white"
+                    className="w-full border border-[#D0D0D0] px-3 py-2 text-sm focus:outline-none focus:border-[#0A0A0A] bg-white"
                   >
                     <option value="">Select Category</option>
                     {categories.map((c) => (
@@ -647,13 +650,13 @@ export default function Products() {
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                     placeholder="e.g. 7400"
-                    className="w-full border border-[#D0D0D0] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#0A0A0A]"
+                    className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
                     Stock Quantity *
@@ -664,7 +667,7 @@ export default function Products() {
                     value={formData.stock}
                     onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
                     placeholder="e.g. 25"
-                    className="w-full border border-[#D0D0D0] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#0A0A0A]"
+                    className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
                     required
                   />
                 </div>
@@ -677,7 +680,7 @@ export default function Products() {
                     value={formData.image}
                     onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                     placeholder="https://images.unsplash.com/..."
-                    className="w-full border border-[#D0D0D0] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#0A0A0A]"
+                    className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
                   />
                 </div>
               </div>
@@ -691,29 +694,30 @@ export default function Products() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Tailored silhouette in breathable cotton..."
-                  className="w-full border border-[#D0D0D0] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#0A0A0A] resize-none"
+                  className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A] resize-none"
                 />
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#E8E8E8]">
+              <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#E8E8E8] shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 text-xs tracking-wider uppercase border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors"
+                  className="px-4 py-2 text-xs tracking-wider uppercase border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-[#0A0A0A] text-white px-6 py-2.5 text-xs tracking-wider uppercase hover:bg-[#333333] transition-colors disabled:opacity-50"
+                  className="bg-[#0A0A0A] text-white px-5 py-2 text-xs tracking-wider uppercase hover:bg-[#333333] transition-colors disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </AdminLayout>
   );
