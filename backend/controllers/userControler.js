@@ -5,6 +5,9 @@ import {
   getUserById,
   updateUserRole,
   deleteUser,
+  getFavorites,
+  addFavorite,
+  removeFavorite,
 } from '../services/userService.js';
 
 const getProfileController = async (req, res) => {
@@ -97,6 +100,61 @@ const deleteUserController = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/users/favorites
+ * Fetch all favorite products of authenticated user
+ */
+const getFavoritesController = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const favorites = await getFavorites(userId);
+    res.status(200).json(favorites);
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({ error: error.message, success: false });
+  }
+};
+
+/**
+ * POST /api/users/favorites/:productId
+ * Add a product to authenticated user's favorites
+ */
+const addFavoriteController = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { productId } = req.params;
+    const favorites = await addFavorite(userId, productId);
+    res.status(200).json({
+      success: true,
+      message: 'Product added to favorites',
+      favorites,
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || (error.message === 'Product not found' ? 404 : 400);
+    res.status(statusCode).json({ error: error.message, success: false });
+  }
+};
+
+/**
+ * DELETE /api/users/favorites/:productId
+ * Remove a product from authenticated user's favorites
+ */
+const removeFavoriteController = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { productId } = req.params;
+    const favorites = await removeFavorite(userId, productId);
+    res.status(200).json({
+      success: true,
+      message: 'Product removed from favorites',
+      favorites,
+    });
+  } catch (error) {
+    const statusCode = error.statusCode || 400;
+    res.status(statusCode).json({ error: error.message, success: false });
+  }
+};
+
 export {
   getProfileController,
   updateProfileController,
@@ -104,6 +162,9 @@ export {
   getUserByIdController,
   updateUserRoleController,
   deleteUserController,
+  getFavoritesController,
+  addFavoriteController,
+  removeFavoriteController,
 };
 
 

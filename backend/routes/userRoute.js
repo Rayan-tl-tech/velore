@@ -6,6 +6,9 @@ import {
   getUserByIdController,
   updateUserRoleController,
   deleteUserController,
+  getFavoritesController,
+  addFavoriteController,
+  removeFavoriteController,
 } from '../controllers/userControler.js';
 import authMiddleware from '../middlewares/authMiddleware.js';
 import roleMiddleware from '../middlewares/roleMiddleware.js';
@@ -15,6 +18,11 @@ const router = express.Router();
 // User profile routes
 router.get('/profile', authMiddleware, getProfileController);
 router.put('/profile', authMiddleware, updateProfileController);
+
+// User favorites routes (strictly authenticated, operating on req.user)
+router.get('/favorites', authMiddleware, getFavoritesController);
+router.post('/favorites/:productId', authMiddleware, addFavoriteController);
+router.delete('/favorites/:productId', authMiddleware, removeFavoriteController);
 
 // Administrative team / user management routes (Protected by JWT + Admin RBAC)
 router.get('/', authMiddleware, roleMiddleware('admin'), getAllUsersController);

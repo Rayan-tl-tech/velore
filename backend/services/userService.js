@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import User from '../models/userModel.js';
+import Product from '../models/productModel.js';
 
 const getProfile = async (userId) => {
   const user = await User.findById(userId).select('-password');
@@ -204,6 +205,119 @@ const deleteUser = async (targetUserId, requestingAdminId) => {
   return { success: true, message: 'User deleted successfully' };
 };
 
+/**
+ * Fetch authenticated user's favorite products.
+ * Populates product details and nested category.
+ * Filters out deleted products and cleans up orphaned IDs.
+ */
+const getFavorites = async (userId) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const err = new Error('Invalid user ID format');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const user = await User.findById(userId)
+    .populate({
+      path: 'favorites',
+      populate: { path: 'category' }
+    })
+    .select('favorites');
+
+  if (!user) {
+    const err = new Error('User not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const validFavorites = (user.favorites || []).filter(item => item != null && item._id);
+
+  if (user.favorites && user.favorites.length !== validFavorites.length) {
+    const cleanIds = validFavorites.map(item => item._id);
+    await User.findByIdAndUpdate(userId, { favorites: cleanIds });
+  }
+
+  return validFavorites;
+};
+
+/**
+ * Add a product to authenticated user's favorites.
+ * Validates productId and existence of product in MongoDB.
+ * Uses atomic $addToSet to prevent duplicates.
+ */
+const addFavorite = async (userId, productId) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const err = new Error('Invalid user ID format');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    const err = new Error('Invalid product ID format');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const product = await Product.findById(productId);
+  if (!product) {
+    const err = new Error('Product not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $addToSet: { favorites: productId } },
+    { returnDocument: 'after' }
+  ).populate({
+    path: 'favorites',
+    populate: { path: 'category' }
+  }).select('favorites');
+
+  if (!user) {
+    const err = new Error('User not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return (user.favorites || []).filter(item => item != null && item._id);
+};
+
+/**
+ * Remove a product from authenticated user's favorites.
+ * Uses atomic $pull.
+ */
+const removeFavorite = async (userId, productId) => {
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    const err = new Error('Invalid user ID format');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(productId)) {
+    const err = new Error('Invalid product ID format');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    userId,
+    { $pull: { favorites: productId } },
+    { returnDocument: 'after' }
+  ).populate({
+    path: 'favorites',
+    populate: { path: 'category' }
+  }).select('favorites');
+
+  if (!user) {
+    const err = new Error('User not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return (user.favorites || []).filter(item => item != null && item._id);
+};
+
 export {
   getProfile,
   updateProfile,
@@ -211,5 +325,8 @@ export {
   getUserById,
   updateUserRole,
   deleteUser,
+  getFavorites,
+  addFavorite,
+  removeFavorite,
 };
 

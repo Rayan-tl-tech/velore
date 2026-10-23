@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import CategoryCards from './components/CategoryCards';
@@ -21,6 +22,8 @@ import ShoppingBagDrawer from './components/cart/ShoppingBagDrawer';
 import ProductDetailModal from './components/catalog/ProductDetailModal';
 import OrdersModal from './components/orders/OrdersModal';
 import ProfileModal from './components/profile/ProfileModal';
+import FavoritesModal from './components/favorites/FavoritesModal';
+import AuthModal from './components/ui/AuthModal';
 import { useToast } from './components/ui/useToast';
 import ScrollReveal from './components/ui/ScrollReveal';
 import { products } from './data/products';
@@ -29,6 +32,7 @@ import { getAllProducts } from './services/api/productService';
 function HomePage({
   onProductClick,
   onOpenOrders,
+  onOpenFavorites,
   onOpenProfile,
   onShowToast,
 }) {
@@ -71,6 +75,7 @@ function HomePage({
     <div className="min-h-screen bg-white">
       <Header
         onOpenOrders={onOpenOrders}
+        onOpenFavorites={onOpenFavorites}
         onOpenProfile={onOpenProfile}
       />
 
@@ -176,6 +181,14 @@ function MainLayout() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { showToast, ToastContainer } = useToast();
+  const {
+    isFavoritesOpen,
+    openFavorites,
+    closeFavorites,
+    isAuthModalOpen,
+    openAuthModal,
+    closeAuthModal,
+  } = useFavorites();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
@@ -183,7 +196,8 @@ function MainLayout() {
 
   const handleOpenOrders = () => {
     if (!isAuthenticated) {
-      navigate('/signin');
+      openAuthModal();
+      showToast('Sign in to view your order history.', 'info');
       return;
     }
     setOrdersModalOpen(true);
@@ -191,10 +205,20 @@ function MainLayout() {
 
   const handleOpenProfile = () => {
     if (!isAuthenticated) {
-      navigate('/signin');
+      openAuthModal();
+      showToast('Sign in to view your profile.', 'info');
       return;
     }
     setProfileModalOpen(true);
+  };
+
+  const handleOpenFavorites = () => {
+    if (!isAuthenticated) {
+      openAuthModal();
+      showToast('Sign in to save your favorites.', 'info');
+      return;
+    }
+    openFavorites();
   };
 
   const handleOrderPlaced = (order) => {
@@ -214,6 +238,7 @@ function MainLayout() {
             <HomePage
               onProductClick={(p) => setSelectedProduct(p)}
               onOpenOrders={handleOpenOrders}
+              onOpenFavorites={handleOpenFavorites}
               onOpenProfile={handleOpenProfile}
               onShowToast={showToast}
             />
@@ -231,7 +256,7 @@ function MainLayout() {
 
       {/* Shopping Bag Drawer (Cart & Algerian Checkout) */}
       <ShoppingBagDrawer
-        onOpenAuth={() => navigate('/signin')}
+        onOpenAuth={() => openAuthModal()}
         onOrderPlaced={handleOrderPlaced}
       />
 
@@ -250,12 +275,32 @@ function MainLayout() {
         onClose={() => setOrdersModalOpen(false)}
       />
 
+      {/* Customer Favorites / Wishlist Modal */}
+      <FavoritesModal
+        isOpen={isFavoritesOpen}
+        onClose={closeFavorites}
+        onProductClick={(p) => setSelectedProduct(p)}
+        onShowToast={showToast}
+      />
+
       {/* Customer Profile Modal */}
       <ProfileModal
         isOpen={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
         onShowToast={showToast}
+        onOpenFavorites={handleOpenFavorites}
+        onOpenOrders={handleOpenOrders}
       />
+
+      {/* Quick Auth Modal for Guests */}
+      {isAuthModalOpen && (
+        <AuthModal
+          onClose={closeAuthModal}
+          onSuccess={() => {
+            showToast('Welcome to VÉLOR!', 'success');
+          }}
+        />
+      )}
 
       {/* Global Toast Container */}
       <ToastContainer />
@@ -267,9 +312,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <CartProvider>
-          <MainLayout />
-        </CartProvider>
+        <FavoritesProvider>
+          <CartProvider>
+            <MainLayout />
+          </CartProvider>
+        </FavoritesProvider>
       </AuthProvider>
     </BrowserRouter>
   );

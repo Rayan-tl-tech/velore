@@ -135,18 +135,18 @@ export default function AuthModal({ onClose, onSuccess }) {
           <X className="w-5 h-5" />
         </button>
 
-        {/* Logo */}
-        <div className="flex justify-center mb-6">
-          <div className="bg-indigo-600 p-3 rounded-xl">
-            <ShoppingCart className="w-7 h-7 text-white" />
+        {/* Logo / Brand */}
+        <div className="flex justify-center mb-4">
+          <div className="bg-[#0A0A0A] text-white px-5 py-2 font-serif-display text-sm tracking-[0.2em] uppercase">
+            VÉLOR
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-1">
-          {mode === 'login' ? 'Welcome back' : 'Create account'}
+        <h2 className="font-serif-display text-2xl font-normal text-[#0A0A0A] text-center mb-1">
+          {mode === 'login' ? 'Sign In' : 'Create Account'}
         </h2>
-        <p className="text-gray-500 text-center text-sm mb-6">
-          {mode === 'login' ? 'Sign in to your account to continue.' : 'Join to start shopping.'}
+        <p className="text-[#666] text-center text-xs mb-6">
+          {mode === 'login' ? 'Sign in to save pieces and manage your wardrobe.' : 'Join VÉLOR to start curating your wardrobe.'}
         </p>
 
         {/* Error / Success banners */}
@@ -172,42 +172,42 @@ export default function AuthModal({ onClose, onSuccess }) {
                 onChange={(e) => setName(e.target.value)}
                 required
                 placeholder="Jane Doe"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-3.5 py-2.5 border border-[#CCC] focus:outline-none focus:border-[#0A0A0A] text-xs"
               />
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-xs uppercase tracking-wider text-[#444] mb-1 font-medium">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="you@example.com"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="w-full px-3.5 py-2.5 border border-[#CCC] focus:outline-none focus:border-[#0A0A0A] text-xs"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-xs uppercase tracking-wider text-[#444] mb-1 font-medium">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="••••••••"
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="w-full px-3.5 py-2.5 border border-[#CCC] focus:outline-none focus:border-[#0A0A0A] text-xs"
             />
           </div>
           {mode === 'register' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+              <label className="block text-xs uppercase tracking-wider text-[#444] mb-1 font-medium">Confirm Password</label>
               <input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 placeholder="••••••••"
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+                className="w-full px-3.5 py-2.5 border border-[#CCC] focus:outline-none focus:border-[#0A0A0A] text-xs"
               />
             </div>
           )}
@@ -215,7 +215,7 @@ export default function AuthModal({ onClose, onSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 disabled:opacity-70 disabled:cursor-not-allowed mt-2"
+            className="w-full py-3.5 bg-[#0A0A0A] text-white text-xs uppercase tracking-[0.2em] font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-3 cursor-pointer"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {mode === 'login' ? 'Sign In' : 'Create Account'}
@@ -223,16 +223,16 @@ export default function AuthModal({ onClose, onSuccess }) {
         </form>
 
         {/* Switch mode link */}
-        <p className="text-center text-sm text-gray-500 mt-6">
+        <p className="text-center text-xs text-[#666] mt-6">
           {mode === 'login' ? (
             <>Don't have an account?{' '}
-              <button onClick={() => switchMode('register')} className="text-indigo-600 font-semibold hover:underline">
+              <button onClick={() => switchMode('register')} className="text-[#0A0A0A] font-semibold underline hover:opacity-70 cursor-pointer">
                 Sign up
               </button>
             </>
           ) : (
             <>Already have an account?{' '}
-              <button onClick={() => switchMode('login')} className="text-indigo-600 font-semibold hover:underline">
+              <button onClick={() => switchMode('login')} className="text-[#0A0A0A] font-semibold underline hover:opacity-70 cursor-pointer">
                 Sign in
               </button>
             </>

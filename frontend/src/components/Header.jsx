@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, User, ShoppingBag, Menu, X, Shield, Package, UserCheck, LogOut, ChevronDown } from 'lucide-react';
+import { Search, User, ShoppingBag, Menu, X, Shield, Package, UserCheck, LogOut, ChevronDown, Heart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
 import { getInitials } from '../utils/formatters';
 
 const navLinks = [
@@ -17,12 +18,14 @@ const navLinks = [
 export default function Header({
   onLoginClick,
   onOpenOrders,
+  onOpenFavorites,
   onOpenProfile,
   onOpenAdminDashboard,
 }) {
   const navigate = useNavigate();
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
   const { cartCount, openBag } = useCart();
+  const { favoritesCount } = useFavorites();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -225,6 +228,24 @@ export default function Header({
                         <button
                           onClick={() => {
                             setDropdownOpen(false);
+                            onOpenFavorites?.();
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-white/10 flex items-center justify-between transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Heart size={14} className="text-white/70" />
+                            <span>My Favorites</span>
+                          </div>
+                          {favoritesCount > 0 && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 bg-white/20 rounded text-white">
+                              {favoritesCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
                             onOpenProfile?.();
                           }}
                           className="w-full text-left px-4 py-2 hover:bg-white/10 flex items-center gap-2.5 transition-colors"
@@ -346,7 +367,7 @@ export default function Header({
                         </button>
                       )}
                     </div>
-                    <div className="flex gap-4 text-xs">
+                    <div className="flex flex-wrap gap-4 text-xs">
                       <button
                         onClick={() => {
                           setMobileMenuOpen(false);
@@ -355,6 +376,16 @@ export default function Header({
                         className="hover:underline"
                       >
                         My Orders
+                      </button>
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          onOpenFavorites?.();
+                        }}
+                        className="hover:underline flex items-center gap-1"
+                      >
+                        <span>Favorites</span>
+                        {favoritesCount > 0 && <span>({favoritesCount})</span>}
                       </button>
                       <button
                         onClick={() => {

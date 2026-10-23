@@ -64,3 +64,33 @@ export const deleteUser = async (id) => {
   return response.data;
 };
 
+/**
+ * Fetch authenticated user's favorite products.
+ * GET /api/users/favorites
+ * Requires: Bearer token
+ */
+export const getFavorites = async () => {
+  const response = await apiClient.get('/users/favorites');
+  return response.data;
+};
+
+/**
+ * Add a product to favorites.
+ * POST /api/users/favorites/:productId
+ * Requires: Bearer token
+ */
+export const addFavorite = async (productId) => {
+  const response = await apiClient.post(`/users/favorites/${productId}`);
+  return response.data;
+};
+
+/**
+ * Remove a product from favorites.
+ * DELETE /api/users/favorites/:productId
+ * Requires: Bearer token
+ */
+export const removeFavorite = async (productId) => {
+  const response = await apiClient.delete(`/users/favorites/${productId}`);
+  return response.data;
+};
+

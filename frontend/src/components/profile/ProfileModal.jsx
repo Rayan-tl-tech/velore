@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { X, User, Mail, Shield, Check, Loader2, Edit2, Phone, MapPin } from 'lucide-react';
+import { X, User, Mail, Shield, Check, Loader2, Edit2, Phone, MapPin, Heart, Package } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useFavorites } from '../../context/FavoritesContext';
 import { getProfile, updateProfile } from '../../services/api/userService';
 import { getInitials } from '../../utils/formatters';
 import { ALGERIA_WILAYAS } from '../cart/ShoppingBagDrawer';
 
-export default function ProfileModal({ isOpen, onClose, onShowToast }) {
+export default function ProfileModal({ isOpen, onClose, onShowToast, onOpenFavorites, onOpenOrders }) {
   const { user, isAdmin, updateUser } = useAuth();
+  const { favoritesCount } = useFavorites();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -321,6 +323,32 @@ export default function ProfileModal({ isOpen, onClose, onShowToast }) {
                   </span>
                 </div>
               </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  handleRequestClose();
+                  setTimeout(() => onOpenOrders?.(), 250);
+                }}
+                className="py-3 px-3 border border-[#E8E8E8] hover:border-[#0A0A0A] bg-white text-xs text-[#0A0A0A] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <Package className="w-3.5 h-3.5" />
+                Orders
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleRequestClose();
+                  setTimeout(() => onOpenFavorites?.(), 250);
+                }}
+                className="py-3 px-3 border border-[#E8E8E8] hover:border-[#0A0A0A] bg-white text-xs text-[#0A0A0A] uppercase tracking-wider font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
+              >
+                <Heart className="w-3.5 h-3.5 fill-[#0A0A0A]" />
+                Favorites ({favoritesCount})
+              </button>
             </div>
 
             <button

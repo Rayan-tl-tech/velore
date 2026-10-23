@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react';
 import { Heart, ShoppingBag, Check } from 'lucide-react';
 import { formatPrice } from '../data/products';
 import { useCart } from '../context/CartContext';
+import { useFavorites } from '../context/FavoritesContext';
 
 export default function ProductCard({ product, index = 0, onProductClick, onShowToast }) {
   const [mounted, setMounted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
   const [selectedSize, setSelectedSize] = useState(null);
   const [addedRecently, setAddedRecently] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [heartBump, setHeartBump] = useState(false);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -19,6 +20,7 @@ export default function ProductCard({ product, index = 0, onProductClick, onShow
   }, []);
 
   const { addToCart } = useCart();
+  const { isFavorite, toggleFavorite } = useFavorites();
 
   const productId = product._id || product.id;
   const sizes = product.sizes || ['XS', 'S', 'M', 'L', 'XL'];
@@ -80,17 +82,24 @@ export default function ProductCard({ product, index = 0, onProductClick, onShow
         )}
 
         <button
-          onClick={(e) => {
+          type="button"
+          onClick={async (e) => {
             e.stopPropagation();
-            setIsWishlisted(!isWishlisted);
+            setHeartBump(true);
+            setTimeout(() => setHeartBump(false), 180);
+            await toggleFavorite(product, onShowToast);
           }}
-          className="absolute top-4 right-4 w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#F7F6F2] transition-colors shadow-sm"
-          aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          className={`absolute top-4 right-4 w-9 h-9 bg-white rounded-full flex items-center justify-center hover:bg-[#F7F6F2] transition-colors shadow-sm transform transition-transform duration-[180ms] ease-out motion-reduce:transition-none cursor-pointer ${
+            heartBump ? 'scale-[1.08]' : 'scale-100'
+          }`}
+          aria-label={isFavorite(productId) ? 'Remove from wishlist' : 'Add to wishlist'}
         >
           <Heart
             size={16}
             strokeWidth={1.5}
-            className={isWishlisted ? 'fill-[#0A0A0A] text-[#0A0A0A]' : 'text-[#0A0A0A]'}
+            className={`transition-colors duration-150 ${
+              isFavorite(productId) ? 'fill-[#0A0A0A] text-[#0A0A0A]' : 'text-[#0A0A0A]'
+            }`}
           />
         </button>
 
