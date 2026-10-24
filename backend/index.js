@@ -66,7 +66,7 @@ app.use(
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://placehold.co"],
+        imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://placehold.co", "https://res.cloudinary.com"],
         connectSrc: [
           "'self'",
           process.env.FRONTEND_URL,
