@@ -43,6 +43,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 import connectDB from './config/db.js';
+import { cookieParserMiddleware, csrfProtectionMiddleware } from './middlewares/csrfMiddleware.js';
 import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoute.js';
 import categorieRoute from './routes/categorieRoute.js';
@@ -118,7 +119,7 @@ app.use((req, res, next) => {
   }
 
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,x-velor-client');
 
   if (req.method === 'OPTIONS') {
     if (origin && !isAllowed) {
@@ -138,6 +139,17 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: {
     error: 'Too many authentication attempts. Please try again after 15 minutes.',
+    success: false,
+  },
+});
+
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 60, // 60 refresh requests per 15 minutes per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many token refresh attempts. Please try again later.',
     success: false,
   },
 });
@@ -165,10 +177,25 @@ const uploadLimiter = rateLimit({
   },
 });
 
+// Phase 4.2 / 4.12: Strict rate limiter for password reset endpoints
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 attempts per 15 minutes per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: 'Too many password reset requests. Please try again after 15 minutes.',
+    success: false,
+  },
+});
+
 // Health check endpoint for deployment monitoring
 app.get('/', (_req, res) => {
   res.json({ status: 'ok', message: 'E-commerce API is active and running!' });
 });
+
+// Parse HttpOnly cookies (Phase 3 authentication)
+app.use(cookieParserMiddleware);
 
 // SEC-12: Explicit Request Body Limits
 app.use(express.json({ limit: '50kb' }));
@@ -177,6 +204,14 @@ app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 // Apply rate limiters to authentication routes
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/refresh', refreshLimiter);
+app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/reset-password', passwordResetLimiter);
+
+// CSRF Protection for state-changing cookie-based endpoints
+const csrfProtection = csrfProtectionMiddleware(allowedOrigins);
+app.use('/api/auth/refresh', csrfProtection);
+app.use('/api/auth/logout', csrfProtection);
 
 // Protect order creation
 app.use('/api/orders', (req, res, next) => {

@@ -75,11 +75,6 @@ export default function ProductCard({ product, index = 0, onProductClick, onShow
           }}
         />
 
-        {product.badge && (
-          <div className="absolute top-4 left-4 bg-white px-3 py-1.5 text-[10px] tracking-[0.15em] uppercase font-medium shadow-sm">
-            {product.badge}
-          </div>
-        )}
 
         <button
           type="button"

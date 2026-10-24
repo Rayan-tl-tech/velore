@@ -135,11 +135,9 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
 
   if (!mounted) return null;
 
-  // Delivery fee calculation
+  // Delivery fee calculation (Home delivery standard across 58 Wilayas)
   const isAlgiers = formData.wilaya?.includes('Alger') || formData.wilaya?.startsWith('16');
-  const shippingFee = formData.deliveryMethod === 'desk'
-    ? (isAlgiers ? 350 : 500)
-    : (isAlgiers ? 500 : 800);
+  const shippingFee = isAlgiers ? 500 : 800;
   const totalOrderPrice = subtotal + shippingFee;
 
   const handleQuantityChange = async (productId, size, currentQty, delta) => {
@@ -515,50 +513,14 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                   <span className="block text-xs uppercase tracking-wider mb-2 font-medium text-[#444]">
                     Delivery Method
                   </span>
-                  <div className="space-y-2">
-                    <label className={`flex items-center justify-between p-3 border text-xs cursor-pointer transition-colors ${
-                      formData.deliveryMethod === 'home' ? 'border-[#0A0A0A] bg-[#F7F6F2]' : 'border-[#E8E8E8]'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="deliveryMethod"
-                          value="home"
-                          checked={formData.deliveryMethod === 'home'}
-                          onChange={handleInputChange}
-                          className="accent-[#0A0A0A]"
-                        />
-                        <div>
-                          <p className="font-semibold">Home Delivery (À domicile)</p>
-                          <p className="text-[11px] text-[#666]">Delivered to your door</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold">
-                        {formatPrice(isAlgiers ? 500 : 800)}
-                      </span>
-                    </label>
-
-                    <label className={`flex items-center justify-between p-3 border text-xs cursor-pointer transition-colors ${
-                      formData.deliveryMethod === 'desk' ? 'border-[#0A0A0A] bg-[#F7F6F2]' : 'border-[#E8E8E8]'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          name="deliveryMethod"
-                          value="desk"
-                          checked={formData.deliveryMethod === 'desk'}
-                          onChange={handleInputChange}
-                          className="accent-[#0A0A0A]"
-                        />
-                        <div>
-                          <p className="font-semibold">Desk Collection (Point Relais / Bureau)</p>
-                          <p className="text-[11px] text-[#666]">Pickup from nearest agency</p>
-                        </div>
-                      </div>
-                      <span className="font-semibold">
-                        {formatPrice(isAlgiers ? 350 : 500)}
-                      </span>
-                    </label>
+                  <div className="flex items-center justify-between p-3 border text-xs bg-[#F7F6F2] border-[#0A0A0A]">
+                    <div>
+                      <p className="font-semibold text-[#0A0A0A]">Home Delivery (À domicile)</p>
+                      <p className="text-[11px] text-[#666]">Delivered directly to your door</p>
+                    </div>
+                    <span className="font-semibold text-[#0A0A0A]">
+                      {formatPrice(isAlgiers ? 500 : 800)}
+                    </span>
                   </div>
                 </div>
 

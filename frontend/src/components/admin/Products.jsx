@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search, Plus, Trash2, Edit3, X, RefreshCw, AlertCircle, CheckCircle, ArrowLeft, Eye, LayoutGrid, List, ArrowRight, UploadCloud, Loader2 } from 'lucide-react';
@@ -7,6 +7,8 @@ import { getAllProducts, createProduct, deleteProduct, updateProduct, uploadProd
 import { getAllCategories } from '../../services/api/categoryService';
 import { formatPrice } from '../../data/products';
 import { useAuth } from '../../context/AuthContext';
+import { shouldOptimizeImage, optimizeImageIfNeeded, formatFileSize } from '../../utils/imageOptimizer';
+
 
 const statusColors = {
   ACTIVE: 'bg-emerald-100 text-emerald-800',
@@ -21,6 +23,17 @@ export default function Products() {
 
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+
+  // Deduplicate categories by name (case-insensitive) to prevent duplicate entries
+  const uniqueCategories = useMemo(() => {
+    return Array.from(
+      new Map(
+        categories
+          .filter((c) => c && c.name)
+          .map((c) => [c.name.trim().toLowerCase(), c])
+      ).values()
+    );
+  }, [categories]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -64,6 +77,8 @@ export default function Products() {
   // Image upload state
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [optimizingImage, setOptimizingImage] = useState(false);
+  const [optimizationInfo, setOptimizationInfo] = useState(null);
   const [imageUploadError, setImageUploadError] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
@@ -112,6 +127,8 @@ export default function Products() {
     setImagePreview('');
     setImageUploadError(null);
     setUploadingImage(false);
+    setOptimizingImage(false);
+    setOptimizationInfo(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setFormError(null);
     setIsModalOpen(true);
@@ -130,6 +147,8 @@ export default function Products() {
     setImagePreview(p.image || '');
     setImageUploadError(null);
     setUploadingImage(false);
+    setOptimizingImage(false);
+    setOptimizationInfo(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
     setFormError(null);
     setIsModalOpen(true);
@@ -139,6 +158,7 @@ export default function Products() {
     if (!file) return;
 
     setImageUploadError(null);
+    setOptimizationInfo(null);
 
     // 1. Client-side format validation
     const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
@@ -150,21 +170,43 @@ export default function Products() {
       return;
     }
 
-    // 2. Client-side size validation (max 5MB)
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_SIZE) {
-      setImageUploadError(`File is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed size is 5MB.`);
-      return;
+    let fileToUpload = file;
+
+    // 2. Intelligent Optimization check: ONLY optimize if file > 5MB
+    if (shouldOptimizeImage(file)) {
+      try {
+        setOptimizingImage(true);
+        const result = await optimizeImageIfNeeded(file);
+        fileToUpload = result.file;
+        setOptimizationInfo({
+          originalSize: result.originalSize,
+          finalSize: result.finalSize,
+          optimized: true,
+        });
+      } catch (err) {
+        setOptimizingImage(false);
+        setImageUploadError(err.message || 'Image optimization failed. Please choose a lighter image.');
+        return;
+      } finally {
+        setOptimizingImage(false);
+      }
+    } else {
+      // File is already <= 5MB: DO NOT compress. Preserve 100% original.
+      setOptimizationInfo({
+        originalSize: file.size,
+        finalSize: file.size,
+        optimized: false,
+      });
     }
 
     // 3. Instant local preview
-    const localPreviewUrl = URL.createObjectURL(file);
+    const localPreviewUrl = URL.createObjectURL(fileToUpload);
     setImagePreview(localPreviewUrl);
 
-    // 4. Upload immediately to storage provider
+    // 4. Upload immediately to storage provider (Cloudinary in prod / storage)
     try {
       setUploadingImage(true);
-      const res = await uploadProductImage(file);
+      const res = await uploadProductImage(fileToUpload);
       if (res && res.url) {
         setFormData((prev) => ({ ...prev, image: res.url }));
         setImagePreview(res.url);
@@ -175,6 +217,10 @@ export default function Products() {
       console.error('Image upload failed:', err);
       const msg = err.response?.data?.message || err.message || 'Failed to upload image. Please try again.';
       setImageUploadError(msg);
+      // If editing an existing product, restore previous image
+      if (formData.image) {
+        setImagePreview(formData.image);
+      }
     } finally {
       setUploadingImage(false);
     }
@@ -194,6 +240,8 @@ export default function Products() {
     setImagePreview('');
     setFormData((prev) => ({ ...prev, image: '' }));
     setImageUploadError(null);
+    setOptimizingImage(false);
+    setOptimizationInfo(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -204,7 +252,8 @@ export default function Products() {
     if (!formData.name.trim()) return setFormError('Product name is required');
     if (!formData.price || Number(formData.price) <= 0) return setFormError('Valid price is required');
     if (formData.stock === '' || Number(formData.stock) < 0) return setFormError('Valid stock quantity is required');
-    if (uploadingImage) return setFormError('Please wait for the image upload to complete before saving.');
+    if (uploadingImage || optimizingImage) return setFormError('Please wait for the image processing to complete before saving.');
+
 
     try {
       setSubmitting(true);
@@ -369,15 +418,12 @@ export default function Products() {
             onChange={(e) => setCategoryFilter(e.target.value)}
             className="bg-white border border-[#E8E8E8] px-3 py-2 text-xs focus:outline-none"
           >
-            <option>All categories</option>
-            {categories.map((c) => (
+            <option value="All categories">All categories</option>
+            {uniqueCategories.map((c) => (
               <option key={c._id || c.name} value={c.name}>
                 {c.name}
               </option>
             ))}
-            <option>Men</option>
-            <option>Women</option>
-            <option>Kids</option>
           </select>
 
           {/* Stock Status Filter */}
@@ -713,7 +759,7 @@ export default function Products() {
                     className="w-full border border-[#D0D0D0] px-3 py-2 text-sm focus:outline-none focus:border-[#0A0A0A] bg-white"
                   >
                     <option value="">Select Category</option>
-                    {categories.map((c) => (
+                    {uniqueCategories.map((c) => (
                       <option key={c._id || c.name} value={c._id || c.name}>
                         {c.name}
                       </option>
@@ -756,16 +802,32 @@ export default function Products() {
                   Product Image
                 </label>
 
-                {imagePreview ? (
+                {imagePreview || optimizingImage ? (
                   <div className="relative border border-[#E8E8E8] bg-[#FAFAFA] p-3.5 flex flex-col sm:flex-row items-center gap-4">
                     <div className="relative w-28 h-28 sm:w-32 sm:h-32 bg-[#F0F0F0] border border-[#E0E0E0] shrink-0 overflow-hidden flex items-center justify-center">
-                      <img
-                        src={imagePreview}
-                        alt="Product preview"
-                        className="w-full h-full object-cover"
-                      />
-                      {uploadingImage && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white p-2 text-center">
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Product preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-[#F7F7F7] text-[#999]">
+                          <UploadCloud size={24} className="mb-1" />
+                        </div>
+                      )}
+
+                      {/* Optimizing State Overlay */}
+                      {optimizingImage && (
+                        <div className="absolute inset-0 bg-black/65 backdrop-blur-xs flex flex-col items-center justify-center text-white p-2 text-center z-10">
+                          <Loader2 className="w-5 h-5 animate-spin mb-1 text-white" />
+                          <span className="text-[10px] tracking-wider uppercase font-medium">Optimizing...</span>
+                        </div>
+                      )}
+
+                      {/* Uploading State Overlay */}
+                      {!optimizingImage && uploadingImage && (
+                        <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white p-2 text-center z-10">
                           <Loader2 className="w-5 h-5 animate-spin mb-1 text-white" />
                           <span className="text-[10px] tracking-wider uppercase font-medium">Uploading...</span>
                         </div>
@@ -774,18 +836,35 @@ export default function Products() {
 
                     <div className="flex-1 w-full flex flex-col justify-between py-1">
                       <div>
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center flex-wrap gap-2 mb-1">
                           <span className="text-xs font-medium text-[#0A0A0A]">
-                            {uploadingImage ? 'Uploading image...' : 'Image ready'}
+                            {optimizingImage
+                              ? 'Optimizing image...'
+                              : uploadingImage
+                              ? 'Uploading image...'
+                              : 'Image ready'}
                           </span>
-                          {!uploadingImage && formData.image && (
+
+                          {/* Badge: Optimization report (only if image was >5MB and got optimized) */}
+                          {optimizationInfo?.optimized && !optimizingImage && (
+                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200">
+                              <CheckCircle size={10} />
+                              {formatFileSize(optimizationInfo.originalSize)} → {formatFileSize(optimizationInfo.finalSize)}
+                            </span>
+                          )}
+
+                          {/* Badge: Uploaded to storage */}
+                          {!optimizingImage && !uploadingImage && formData.image && (
                             <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">
                               <CheckCircle size={10} /> Uploaded
                             </span>
                           )}
                         </div>
+
                         <p className="text-[11px] text-[#777] mb-3">
-                          {uploadingImage
+                          {optimizingImage
+                            ? 'File exceeds 5MB. Optimizing dimensions and compression while preserving high visual quality...'
+                            : uploadingImage
                             ? 'Transmitting file to storage provider...'
                             : 'This image will be displayed on the storefront and product catalog.'}
                         </p>
@@ -795,7 +874,7 @@ export default function Products() {
                         <button
                           type="button"
                           onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadingImage}
+                          disabled={uploadingImage || optimizingImage}
                           className="px-3 py-1.5 text-xs tracking-wider uppercase border border-[#D0D0D0] hover:border-[#0A0A0A] bg-white text-[#0A0A0A] transition-colors disabled:opacity-50"
                         >
                           Replace Image
@@ -803,7 +882,7 @@ export default function Products() {
                         <button
                           type="button"
                           onClick={handleRemoveImage}
-                          disabled={uploadingImage}
+                          disabled={uploadingImage || optimizingImage}
                           className="px-3 py-1.5 text-xs tracking-wider uppercase text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors disabled:opacity-50"
                         >
                           Remove
@@ -813,7 +892,7 @@ export default function Products() {
                   </div>
                 ) : (
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => !optimizingImage && fileInputRef.current?.click()}
                     onDragOver={(e) => {
                       e.preventDefault();
                       setIsDragging(true);
@@ -847,7 +926,7 @@ export default function Products() {
                       </p>
                     </div>
                     <p className="text-[10px] tracking-wider uppercase text-[#999] mt-1">
-                      JPG, PNG, WebP · Max 5MB
+                      JPG, PNG, WebP · Auto-optimized if &gt; 5MB
                     </p>
                   </div>
                 )}

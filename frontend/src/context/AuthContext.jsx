@@ -1,5 +1,11 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { login as loginApi, register as registerApi } from '../services/api/authService';
+import {
+  login as loginApi,
+  register as registerApi,
+  refreshToken as refreshApi,
+  logout as logoutApi,
+} from '../services/api/authService';
+import { setAccessToken } from '../services/api/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -8,69 +14,109 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Restore session on mount & clean corrupted tokens
+  // Restore session via silent HttpOnly refresh on initial app mount
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    if (storedToken && storedUser && storedToken !== 'null' && storedToken !== 'undefined') {
+    let mounted = true;
+
+    const restoreSession = async () => {
       try {
-        setToken(storedToken);
-        setUser(JSON.parse(storedUser));
+        const data = await refreshApi();
+        if (mounted && data) {
+          const freshToken = data.accessToken || data.token;
+          setToken(freshToken);
+          setAccessToken(freshToken);
+          setUser(data.user || null);
+        }
       } catch {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        setToken(null);
-        setUser(null);
+        if (mounted) {
+          setToken(null);
+          setAccessToken(null);
+          setUser(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    } else {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      setToken(null);
-      setUser(null);
-    }
-    setLoading(false);
+    };
+
+    restoreSession();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-  // Listen for automatic token expiration triggered by API 401 interceptor
+  // Listen for background token updates from the Axios 401 interceptor
   useEffect(() => {
+    const handleTokenRefreshed = (e) => {
+      const newToken = e.detail?.token;
+      const newUser = e.detail?.user;
+      if (newToken) {
+        setToken(newToken);
+        setAccessToken(newToken);
+      }
+      if (newUser) {
+        setUser(newUser);
+      }
+    };
+
     const handleAuthExpired = () => {
       setToken(null);
+      setAccessToken(null);
       setUser(null);
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
     };
+
+    window.addEventListener('auth:token_refreshed', handleTokenRefreshed);
     window.addEventListener('auth:expired', handleAuthExpired);
-    return () => window.removeEventListener('auth:expired', handleAuthExpired);
+
+    return () => {
+      window.removeEventListener('auth:token_refreshed', handleTokenRefreshed);
+      window.removeEventListener('auth:expired', handleAuthExpired);
+    };
   }, []);
 
   const login = useCallback(async (email, password) => {
     const data = await loginApi(email, password);
-    const newToken = data.token;
+    const newToken = data.accessToken || data.token;
     const userInfo = data.user || data;
+
+    // Store in-memory only (NO LOCALSTORAGE)
     setToken(newToken);
+    setAccessToken(newToken);
     setUser(userInfo);
-    localStorage.setItem('token', newToken);
-    localStorage.setItem('user', JSON.stringify(userInfo));
+
     return userInfo;
   }, []);
 
   const register = useCallback(async (name, email, password) => {
-    return await registerApi(name, email, password);
+    const data = await registerApi(name, email, password);
+    const newToken = data.accessToken || data.token;
+    const userInfo = data.user || data;
+
+    // Store in-memory only
+    if (newToken) {
+      setToken(newToken);
+      setAccessToken(newToken);
+      setUser(userInfo);
+    }
+
+    return userInfo;
   }, []);
 
   const updateUser = useCallback((newUserData) => {
-    setUser((prev) => {
-      const updated = { ...prev, ...newUserData };
-      localStorage.setItem('user', JSON.stringify(updated));
-      return updated;
-    });
+    setUser((prev) => (prev ? { ...prev, ...newUserData } : prev));
   }, []);
 
-  const logout = useCallback(() => {
-    setToken(null);
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  const logout = useCallback(async () => {
+    try {
+      await logoutApi();
+    } finally {
+      // Clear in-memory token and state
+      setToken(null);
+      setAccessToken(null);
+      setUser(null);
+    }
   }, []);
 
   const isAdmin = (user?.roles?.includes('admin') || user?.role === 'admin') ?? false;

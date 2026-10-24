@@ -119,11 +119,6 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
               e.currentTarget.src = 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop';
             }}
           />
-          {product.badge && (
-            <div className="absolute top-4 left-4 bg-white px-3 py-1.5 text-[10px] tracking-[0.15em] uppercase font-medium">
-              {product.badge}
-            </div>
-          )}
           {outOfStock && (
             <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
               <span className="bg-[#0A0A0A] text-white text-xs font-bold px-4 py-2 uppercase tracking-widest">
