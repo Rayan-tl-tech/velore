@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import {
-  X, ShoppingBag, Plus, Minus, Trash2, ArrowRight, ArrowLeft,
-  Loader2, CheckCircle2, ShieldCheck, Truck, MapPin, Phone, User
-} from 'lucide-react';
+import { X, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
-import { getImageUrl } from '../../utils/formatters';
 import { formatPrice } from '../../data/products';
+import CartItem from './CartItem';
+import CartEmptyState from './CartEmptyState';
+import CartCheckoutForm from './CartCheckoutForm';
+import CartSuccessReceipt from './CartSuccessReceipt';
 
-// 58 Algerian Wilayas
+// 58 Algerian Wilayas (preserved for export compatibility with ProfileModal.jsx)
 export const ALGERIA_WILAYAS = [
   '01 - Adrar', '02 - Chlef', '03 - Laghouat', '04 - Oum El Bouaghi', '05 - Batna',
   '06 - Béjaïa', '07 - Biskra', '08 - Béchar', '09 - Blida', '10 - Bouira',
@@ -24,6 +24,10 @@ export const ALGERIA_WILAYAS = [
   '56 - Djanet', '57 - El M\'Ghair', '58 - El Meniaa'
 ];
 
+/**
+ * ShoppingBagDrawer — Main sliding panel coordinating cart review,
+ * Algerian cash-on-delivery checkout, and order confirmation receipt.
+ */
 export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
   const { isAuthenticated, user } = useAuth();
   const {
@@ -239,7 +243,6 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
             visible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
           }`}
         >
-
           {/* Header */}
           <div className="p-6 bg-[#0A0A0A] text-white flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -248,6 +251,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                   onClick={() => setDrawerMode('cart')}
                   className="p-1 hover:text-white/70 transition-colors mr-1 cursor-pointer"
                   aria-label="Back to Cart"
+                  type="button"
                 >
                   <ArrowLeft size={18} />
                 </button>
@@ -262,6 +266,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
               onClick={closeBag}
               className="p-1 text-white/70 hover:text-white transition-colors cursor-pointer"
               aria-label="Close bag"
+              type="button"
             >
               <X size={20} />
             </button>
@@ -271,21 +276,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
           {drawerMode === 'cart' && (
             <>
               {items.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                  <div className="w-16 h-16 rounded-full bg-[#F7F6F2] flex items-center justify-center mb-6">
-                    <ShoppingBag size={24} className="text-[#666]" strokeWidth={1.5} />
-                  </div>
-                  <h3 className="font-serif-display text-2xl mb-2">Your bag is empty</h3>
-                  <p className="text-sm text-[#666] max-w-xs mb-8">
-                    Explore the seasonal collection and discover timeless essentials.
-                  </p>
-                  <button
-                    onClick={closeBag}
-                    className="bg-[#0A0A0A] text-white px-8 py-3.5 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] transition-colors cursor-pointer"
-                  >
-                    Start Shopping
-                  </button>
-                </div>
+                <CartEmptyState onClose={closeBag} />
               ) : (
                 <>
                   {/* Items Scrollable List */}
@@ -298,67 +289,15 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                       const isUpdating = updatingId === `${pId}-${size}`;
 
                       return (
-                        <div key={itemKey} className="flex gap-4 pt-4 first:pt-0">
-                          {/* Thumbnail */}
-                          <div className="w-20 h-26 bg-[#F0F0F0] overflow-hidden shrink-0">
-                            <img
-                              src={p.image ? getImageUrl(p.image) : 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop'}
-                              alt={p.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
-
-                          {/* Info */}
-                          <div className="flex-1 flex flex-col justify-between">
-                            <div>
-                              <div className="flex justify-between items-start gap-2">
-                                <h4 className="text-sm font-medium leading-tight text-[#0A0A0A]">
-                                  {p.name}
-                                </h4>
-                                <button
-                                  onClick={() => handleRemove(pId, size)}
-                                  disabled={isUpdating}
-                                  className="text-[#888] hover:text-[#0A0A0A] p-1 transition-colors cursor-pointer"
-                                  title="Remove item"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                              <p className="text-xs text-[#666] mt-1">
-                                Size: <span className="font-semibold text-[#0A0A0A]">{size}</span>
-                              </p>
-                              <p className="text-sm font-medium text-[#0A0A0A] mt-1">
-                                {formatPrice(p.price)}
-                              </p>
-                            </div>
-
-                            {/* Quantity Stepper */}
-                            <div className="flex items-center justify-between pt-2">
-                              <div className="inline-flex items-center border border-[#E8E8E8] text-xs">
-                                <button
-                                  onClick={() => handleQuantityChange(pId, size, item.quantity, -1)}
-                                  disabled={isUpdating}
-                                  className="p-1.5 hover:bg-[#F7F6F2] transition-colors cursor-pointer disabled:opacity-30"
-                                >
-                                  <Minus size={12} />
-                                </button>
-                                <span className="px-3 font-medium min-w-6 text-center">
-                                  {item.quantity}
-                                </span>
-                                <button
-                                  onClick={() => handleQuantityChange(pId, size, item.quantity, 1)}
-                                  disabled={isUpdating}
-                                  className="p-1.5 hover:bg-[#F7F6F2] transition-colors cursor-pointer disabled:opacity-30"
-                                >
-                                  <Plus size={12} />
-                                </button>
-                              </div>
-                              <span className="text-xs font-semibold">
-                                {formatPrice((Number(p.price) || 0) * item.quantity)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                        <CartItem
+                          key={itemKey}
+                          item={item}
+                          isUpdating={isUpdating}
+                          onQuantityChange={(delta) =>
+                            handleQuantityChange(pId, size, item.quantity, delta)
+                          }
+                          onRemove={() => handleRemove(pId, size)}
+                        />
                       );
                     })}
                   </div>
@@ -367,7 +306,9 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                   <div className="border-t border-[#E8E8E8] p-6 bg-[#F7F6F2] space-y-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-[#666]">Subtotal</span>
-                      <span className="font-semibold text-[#0A0A0A]">{formatPrice(subtotal)}</span>
+                      <span className="font-semibold text-[#0A0A0A]">
+                        {formatPrice(subtotal)}
+                      </span>
                     </div>
                     <div className="flex justify-between text-xs text-[#666]">
                       <span>Estimated Shipping</span>
@@ -377,6 +318,7 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                     <button
                       onClick={handleProceedToCheckout}
                       className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                      type="button"
                     >
                       <span>Proceed to Checkout</span>
                       <ArrowRight size={14} />
@@ -393,227 +335,29 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
 
           {/* CONTENT: CHECKOUT VIEW */}
           {drawerMode === 'checkout' && (
-            <form onSubmit={handleSubmitOrder} className="flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-6 space-y-5">
-                {formError && (
-                  <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs">
-                    {formError}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pb-3 border-b border-[#E8E8E8]">
-                  <span className="text-xs tracking-[0.2em] uppercase text-[#666] font-medium">
-                    Customer Information
-                  </span>
-                  {isAuthenticated ? (
-                    <span className="text-[10px] bg-green-50 text-green-700 font-semibold px-2 py-0.5 rounded">
-                      Profile linked
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-[#666]">Guest order</span>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium text-[#444]">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="customerName"
-                    value={formData.customerName}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Rayan Taleb"
-                    required
-                    className="w-full border border-[#CCC] px-3 py-2.5 text-xs focus:outline-none focus:border-[#0A0A0A] bg-white"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium text-[#444]">
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      name="customerPhone"
-                      value={formData.customerPhone}
-                      onChange={handleInputChange}
-                      placeholder="0550 12 34 56"
-                      required
-                      className="w-full border border-[#CCC] px-3 py-2.5 text-xs focus:outline-none focus:border-[#0A0A0A] bg-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium text-[#444]">
-                      Email (Optional)
-                    </label>
-                    <input
-                      type="email"
-                      name="customerEmail"
-                      value={formData.customerEmail}
-                      onChange={handleInputChange}
-                      placeholder="you@email.com"
-                      className="w-full border border-[#CCC] px-3 py-2.5 text-xs focus:outline-none focus:border-[#0A0A0A] bg-white"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium text-[#444]">
-                    Wilaya *
-                  </label>
-                  <select
-                    name="wilaya"
-                    value={formData.wilaya}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full border border-[#CCC] px-3 py-2.5 text-xs focus:outline-none focus:border-[#0A0A0A] bg-white"
-                  >
-                    {ALGERIA_WILAYAS.map((w) => (
-                      <option key={w} value={w}>
-                        {w}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium text-[#444]">
-                    Commune / City *
-                  </label>
-                  <input
-                    type="text"
-                    name="commune"
-                    value={formData.commune}
-                    onChange={handleInputChange}
-                    placeholder="e.g. Bab Ezzouar, Hydra, Es Senia..."
-                    required
-                    className="w-full border border-[#CCC] px-3 py-2.5 text-xs focus:outline-none focus:border-[#0A0A0A] bg-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs uppercase tracking-wider mb-1.5 font-medium text-[#444]">
-                    Delivery Address *
-                  </label>
-                  <textarea
-                    name="shippingAddress"
-                    rows={2}
-                    value={formData.shippingAddress}
-                    onChange={handleInputChange}
-                    placeholder="Street name, building number, floor or landmarks..."
-                    required
-                    className="w-full border border-[#CCC] px-3 py-2.5 text-xs focus:outline-none focus:border-[#0A0A0A] bg-white resize-none"
-                  />
-                </div>
-
-                {/* Delivery Option */}
-                <div className="pt-2">
-                  <span className="block text-xs uppercase tracking-wider mb-2 font-medium text-[#444]">
-                    Delivery Method
-                  </span>
-                  <div className="flex items-center justify-between p-3 border text-xs bg-[#F7F6F2] border-[#0A0A0A]">
-                    <div>
-                      <p className="font-semibold text-[#0A0A0A]">Home Delivery (À domicile)</p>
-                      <p className="text-[11px] text-[#666]">Delivered directly to your door</p>
-                    </div>
-                    <span className="font-semibold text-[#0A0A0A]">
-                      {formatPrice(isAlgiers ? 500 : 800)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-[#F0F0F0] text-xs text-[#555] flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-[#0A0A0A] shrink-0" />
-                  <span>Paiement à la livraison — Pay in cash upon receipt.</span>
-                </div>
-              </div>
-
-              {/* Order Finalization Footer */}
-              <div className="border-t border-[#E8E8E8] p-6 bg-[#F7F6F2] space-y-3">
-                <div className="flex justify-between text-xs text-[#666]">
-                  <span>Items ({cartCount})</span>
-                  <span>{formatPrice(subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-[#666]">
-                  <span>Shipping Fee</span>
-                  <span>{formatPrice(shippingFee)}</span>
-                </div>
-                <div className="flex justify-between text-sm font-semibold border-t border-[#E8E8E8] pt-2">
-                  <span>Total Due</span>
-                  <span className="text-base text-[#0A0A0A]">{formatPrice(totalOrderPrice)}</span>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={checkoutLoading}
-                  className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-lg disabled:opacity-70 mt-2"
-                >
-                  {checkoutLoading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin" />
-                      <span>Confirming Order…</span>
-                    </>
-                  ) : (
-                    <span>Confirm Order • {formatPrice(totalOrderPrice)}</span>
-                  )}
-                </button>
-              </div>
-            </form>
+            <CartCheckoutForm
+              formData={formData}
+              onInputChange={handleInputChange}
+              onSubmit={handleSubmitOrder}
+              formError={formError}
+              isAuthenticated={isAuthenticated}
+              wilayas={ALGERIA_WILAYAS}
+              isAlgiers={isAlgiers}
+              cartCount={cartCount}
+              subtotal={subtotal}
+              shippingFee={shippingFee}
+              totalOrderPrice={totalOrderPrice}
+              checkoutLoading={checkoutLoading}
+            />
           )}
 
           {/* CONTENT: SUCCESS RECEIPT VIEW */}
-          {drawerMode === 'success' && placedOrder && (
-            <div className="flex-1 flex flex-col p-8 overflow-y-auto text-center justify-between animate-admin-view">
-              <div className="py-6">
-                <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200">
-                  <CheckCircle2 size={32} />
-                </div>
-                <h3 className="font-serif-display text-2xl font-normal mb-2">
-                  Merci pour votre commande
-                </h3>
-                <p className="text-xs text-[#666] tracking-widest uppercase mb-6">
-                  Order #{placedOrder._id?.slice(-6).toUpperCase()}
-                </p>
-
-                <div className="bg-[#F7F6F2] p-4 text-left text-xs space-y-2 border border-[#E8E8E8] mb-6">
-                  <div className="flex justify-between">
-                    <span className="text-[#666]">Client:</span>
-                    <span className="font-semibold">{placedOrder.customerName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#666]">Téléphone:</span>
-                    <span className="font-semibold">{placedOrder.customerPhone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#666]">Wilaya:</span>
-                    <span className="font-semibold">{placedOrder.wilaya}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#666]">Commune:</span>
-                    <span className="font-semibold">{placedOrder.commune}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-[#E8E8E8] pt-2">
-                    <span className="text-[#666]">Total à payer:</span>
-                    <span className="font-bold text-sm text-[#0A0A0A]">{formatPrice(placedOrder.totalPrice)}</span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-[#666] leading-relaxed">
-                  Notre équipe va vous contacter par téléphone pour confirmer la livraison de votre colis.
-                </p>
-              </div>
-
-              <button
-                onClick={handleContinueShopping}
-                className="w-full bg-[#0A0A0A] text-white py-4 text-xs tracking-[0.2em] uppercase font-medium hover:bg-[#333333] hover:-translate-y-[0.5px] active:scale-[0.99] transition-all duration-150 cursor-pointer"
-              >
-                Continuer mes achats
-              </button>
-            </div>
+          {drawerMode === 'success' && (
+            <CartSuccessReceipt
+              placedOrder={placedOrder}
+              onContinueShopping={handleContinueShopping}
+            />
           )}
-
         </div>
       </div>
     </div>
