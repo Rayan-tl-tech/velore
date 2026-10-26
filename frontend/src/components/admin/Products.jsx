@@ -1,14 +1,24 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, Plus, Trash2, Edit3, X, RefreshCw, AlertCircle, CheckCircle, ArrowLeft, Eye, LayoutGrid, List, ArrowRight, UploadCloud, Loader2 } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Trash2,
+  Edit3,
+  RefreshCw,
+  AlertCircle,
+  CheckCircle,
+  ArrowLeft,
+  LayoutGrid,
+  List,
+  ArrowRight,
+} from 'lucide-react';
 import AdminLayout from './AdminLayout';
-import { getAllProducts, createProduct, deleteProduct, updateProduct, uploadProductImage } from '../../services/api/productService';
+import ProductFormModal from './modals/ProductFormModal';
+import { getAllProducts, deleteProduct } from '../../services/api/productService';
 import { getAllCategories } from '../../services/api/categoryService';
 import { formatPrice } from '../../data/products';
 import { useAuth } from '../../context/AuthContext';
-import { shouldOptimizeImage, optimizeImageIfNeeded, formatFileSize } from '../../utils/imageOptimizer';
-
 
 const statusColors = {
   ACTIVE: 'bg-emerald-100 text-emerald-800',
@@ -16,6 +26,10 @@ const statusColors = {
   OUT_OF_STOCK: 'bg-red-100 text-red-800',
 };
 
+/**
+ * Products — Admin Product Catalog page with inventory health filters,
+ * real-time search, table/grid views, and Add/Edit product management.
+ */
 export default function Products() {
   const { isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,7 +38,7 @@ export default function Products() {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
 
-  // Deduplicate categories by name (case-insensitive) to prevent duplicate entries
+  // Deduplicate categories by name (case-insensitive)
   const uniqueCategories = useMemo(() => {
     return Array.from(
       new Map(
@@ -34,6 +48,7 @@ export default function Products() {
       ).values()
     );
   }, [categories]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -44,6 +59,10 @@ export default function Products() {
   const [statusFilter, setStatusFilter] = useState('All statuses');
   const [stockFilter, setStockFilter] = useState(stockParam);
   const [viewMode, setViewMode] = useState(stockParam !== 'all' ? 'grid' : 'table');
+
+  // Modal State for Add / Edit
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
 
   // Sync state if URL query params change
   useEffect(() => {
@@ -67,30 +86,6 @@ export default function Products() {
     }
     setSearchParams(newParams);
   };
-
-  // Modal State for Add / Edit
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState(null);
-
-  // Image upload state
-  const [imagePreview, setImagePreview] = useState('');
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [optimizingImage, setOptimizingImage] = useState(false);
-  const [optimizationInfo, setOptimizationInfo] = useState(null);
-  const [imageUploadError, setImageUploadError] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const fileInputRef = useRef(null);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    category: '',
-    price: '',
-    stock: '',
-    description: '',
-    image: '',
-  });
 
   const loadData = async () => {
     try {
@@ -116,174 +111,18 @@ export default function Products() {
 
   const openAddModal = () => {
     setEditingProduct(null);
-    setFormData({
-      name: '',
-      category: categories[0]?._id || '',
-      price: '',
-      stock: '',
-      description: '',
-      image: '',
-    });
-    setImagePreview('');
-    setImageUploadError(null);
-    setUploadingImage(false);
-    setOptimizingImage(false);
-    setOptimizationInfo(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    setFormError(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (p) => {
     setEditingProduct(p);
-    setFormData({
-      name: p.name || '',
-      category: typeof p.category === 'object' ? p.category?._id : p.category || '',
-      price: p.price || '',
-      stock: p.stock ?? '',
-      description: p.description || '',
-      image: p.image || '',
-    });
-    setImagePreview(p.image || '');
-    setImageUploadError(null);
-    setUploadingImage(false);
-    setOptimizingImage(false);
-    setOptimizationInfo(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    setFormError(null);
     setIsModalOpen(true);
   };
 
-  const processSelectedFile = async (file) => {
-    if (!file) return;
-
-    setImageUploadError(null);
-    setOptimizationInfo(null);
-
-    // 1. Client-side format validation
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const extension = file.name?.split('.').pop()?.toLowerCase();
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-
-    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(extension)) {
-      setImageUploadError('Invalid format. Please select a JPG, PNG, or WebP image.');
-      return;
-    }
-
-    let fileToUpload = file;
-
-    // 2. Intelligent Optimization check: ONLY optimize if file > 5MB
-    if (shouldOptimizeImage(file)) {
-      try {
-        setOptimizingImage(true);
-        const result = await optimizeImageIfNeeded(file);
-        fileToUpload = result.file;
-        setOptimizationInfo({
-          originalSize: result.originalSize,
-          finalSize: result.finalSize,
-          optimized: true,
-        });
-      } catch (err) {
-        setOptimizingImage(false);
-        setImageUploadError(err.message || 'Image optimization failed. Please choose a lighter image.');
-        return;
-      } finally {
-        setOptimizingImage(false);
-      }
-    } else {
-      // File is already <= 5MB: DO NOT compress. Preserve 100% original.
-      setOptimizationInfo({
-        originalSize: file.size,
-        finalSize: file.size,
-        optimized: false,
-      });
-    }
-
-    // 3. Instant local preview
-    const localPreviewUrl = URL.createObjectURL(fileToUpload);
-    setImagePreview(localPreviewUrl);
-
-    // 4. Upload immediately to storage provider (Cloudinary in prod / storage)
-    try {
-      setUploadingImage(true);
-      const res = await uploadProductImage(fileToUpload);
-      if (res && res.url) {
-        setFormData((prev) => ({ ...prev, image: res.url }));
-        setImagePreview(res.url);
-      } else {
-        throw new Error('No image URL returned from storage');
-      }
-    } catch (err) {
-      console.error('Image upload failed:', err);
-      const msg = err.response?.data?.message || err.message || 'Failed to upload image. Please try again.';
-      setImageUploadError(msg);
-      // If editing an existing product, restore previous image
-      if (formData.image) {
-        setImagePreview(formData.image);
-      }
-    } finally {
-      setUploadingImage(false);
-    }
-  };
-
-  const handleFileInputChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      processSelectedFile(file);
-    }
-    if (e.target) {
-      e.target.value = '';
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setImagePreview('');
-    setFormData((prev) => ({ ...prev, image: '' }));
-    setImageUploadError(null);
-    setOptimizingImage(false);
-    setOptimizationInfo(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.name.trim()) return setFormError('Product name is required');
-    if (!formData.price || Number(formData.price) <= 0) return setFormError('Valid price is required');
-    if (formData.stock === '' || Number(formData.stock) < 0) return setFormError('Valid stock quantity is required');
-    if (uploadingImage || optimizingImage) return setFormError('Please wait for the image processing to complete before saving.');
-
-
-    try {
-      setSubmitting(true);
-      setFormError(null);
-
-      // Create a FormData or JSON payload
-      const payload = new FormData();
-      payload.append('name', formData.name.trim());
-      payload.append('price', Number(formData.price));
-      payload.append('stock', Number(formData.stock));
-      payload.append('description', formData.description.trim());
-      if (formData.category) payload.append('category', formData.category);
-      if (formData.image) payload.append('image', formData.image.trim());
-
-      if (editingProduct) {
-        await updateProduct(editingProduct._id, payload);
-        setSuccessMessage(`Product "${formData.name}" updated successfully!`);
-      } else {
-        await createProduct(payload);
-        setSuccessMessage(`Product "${formData.name}" added to catalog!`);
-      }
-
-      setIsModalOpen(false);
-      await loadData();
-      setTimeout(() => setSuccessMessage(null), 4000);
-    } catch (err) {
-      setFormError(err.response?.data?.message || err.message || 'Failed to save product');
-    } finally {
-      setSubmitting(false);
-    }
+  const handleProductSaved = async (_savedProduct, message) => {
+    setSuccessMessage(message);
+    await loadData();
+    setTimeout(() => setSuccessMessage(null), 4000);
   };
 
   const handleDelete = async (id, name) => {
@@ -298,7 +137,7 @@ export default function Products() {
     }
   };
 
-  // Filtered List
+  // Filtered List based on search, category, stock level, and status
   const filteredProducts = products.filter((product) => {
     const catName = typeof product.category === 'object' ? product.category?.name : product.category;
     const matchesSearch =
@@ -336,7 +175,7 @@ export default function Products() {
         <button
           onClick={loadData}
           disabled={refreshing}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors bg-white font-medium"
+          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors bg-white font-medium cursor-pointer"
         >
           <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
           <span>Refresh</span>
@@ -474,7 +313,7 @@ export default function Products() {
 
             <button
               onClick={openAddModal}
-              className="bg-[#0A0A0A] text-white px-4 py-2.5 text-xs tracking-[0.15em] uppercase font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 shrink-0"
+              className="bg-[#0A0A0A] text-white px-4 py-2.5 text-xs tracking-[0.15em] uppercase font-medium hover:bg-[#333333] transition-colors flex items-center justify-center gap-2 shrink-0 cursor-pointer"
             >
               <Plus size={15} strokeWidth={1.5} />
               Add Product
@@ -706,281 +545,14 @@ export default function Products() {
         </div>
       )}
 
-      {/* Add / Edit Product Modal */}
-      {isModalOpen && createPortal(
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-white w-full max-w-lg border border-[#E8E8E8] shadow-2xl flex flex-col max-h-[90vh] my-auto">
-            <div className="flex items-center justify-between p-5 sm:p-6 border-b border-[#E8E8E8] shrink-0">
-              <div>
-                <p className="text-[10px] tracking-[0.2em] uppercase text-[#666] mb-1">
-                  {editingProduct ? 'Update Product' : 'New Catalog Item'}
-                </p>
-                <h3 className="font-serif-display text-xl sm:text-2xl">
-                  {editingProduct ? 'Edit Product' : 'Add New Product'}
-                </h3>
-              </div>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-[#666] hover:text-[#0A0A0A] transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 overflow-y-auto flex-1">
-              {formError && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3.5 py-2 text-xs">
-                  {formError}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                  Product Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Essential Tailored Coat"
-                  className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                    Category
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="w-full border border-[#D0D0D0] px-3 py-2 text-sm focus:outline-none focus:border-[#0A0A0A] bg-white"
-                  >
-                    <option value="">Select Category</option>
-                    {uniqueCategories.map((c) => (
-                      <option key={c._id || c.name} value={c._id || c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                    Price (DA) *
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="e.g. 7400"
-                    className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                  Stock Quantity *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  placeholder="e.g. 25"
-                  className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                  Product Image
-                </label>
-
-                {imagePreview || optimizingImage ? (
-                  <div className="relative border border-[#E8E8E8] bg-[#FAFAFA] p-3.5 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="relative w-28 h-28 sm:w-32 sm:h-32 bg-[#F0F0F0] border border-[#E0E0E0] shrink-0 overflow-hidden flex items-center justify-center">
-                      {imagePreview ? (
-                        <img
-                          src={imagePreview}
-                          alt="Product preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center bg-[#F7F7F7] text-[#999]">
-                          <UploadCloud size={24} className="mb-1" />
-                        </div>
-                      )}
-
-                      {/* Optimizing State Overlay */}
-                      {optimizingImage && (
-                        <div className="absolute inset-0 bg-black/65 backdrop-blur-xs flex flex-col items-center justify-center text-white p-2 text-center z-10">
-                          <Loader2 className="w-5 h-5 animate-spin mb-1 text-white" />
-                          <span className="text-[10px] tracking-wider uppercase font-medium">Optimizing...</span>
-                        </div>
-                      )}
-
-                      {/* Uploading State Overlay */}
-                      {!optimizingImage && uploadingImage && (
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center text-white p-2 text-center z-10">
-                          <Loader2 className="w-5 h-5 animate-spin mb-1 text-white" />
-                          <span className="text-[10px] tracking-wider uppercase font-medium">Uploading...</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 w-full flex flex-col justify-between py-1">
-                      <div>
-                        <div className="flex items-center flex-wrap gap-2 mb-1">
-                          <span className="text-xs font-medium text-[#0A0A0A]">
-                            {optimizingImage
-                              ? 'Optimizing image...'
-                              : uploadingImage
-                              ? 'Uploading image...'
-                              : 'Image ready'}
-                          </span>
-
-                          {/* Badge: Optimization report (only if image was >5MB and got optimized) */}
-                          {optimizationInfo?.optimized && !optimizingImage && (
-                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 border border-emerald-200">
-                              <CheckCircle size={10} />
-                              {formatFileSize(optimizationInfo.originalSize)} → {formatFileSize(optimizationInfo.finalSize)}
-                            </span>
-                          )}
-
-                          {/* Badge: Uploaded to storage */}
-                          {!optimizingImage && !uploadingImage && formData.image && (
-                            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-200">
-                              <CheckCircle size={10} /> Uploaded
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-[11px] text-[#777] mb-3">
-                          {optimizingImage
-                            ? 'File exceeds 5MB. Optimizing dimensions and compression while preserving high visual quality...'
-                            : uploadingImage
-                            ? 'Transmitting file to storage provider...'
-                            : 'This image will be displayed on the storefront and product catalog.'}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadingImage || optimizingImage}
-                          className="px-3 py-1.5 text-xs tracking-wider uppercase border border-[#D0D0D0] hover:border-[#0A0A0A] bg-white text-[#0A0A0A] transition-colors disabled:opacity-50"
-                        >
-                          Replace Image
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          disabled={uploadingImage || optimizingImage}
-                          className="px-3 py-1.5 text-xs tracking-wider uppercase text-red-600 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors disabled:opacity-50"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => !optimizingImage && fileInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-                        processSelectedFile(e.dataTransfer.files[0]);
-                      }
-                    }}
-                    className={`border-2 border-dashed transition-all cursor-pointer p-6 sm:p-8 text-center flex flex-col items-center justify-center gap-2 ${
-                      isDragging
-                        ? 'border-[#0A0A0A] bg-[#F5F5F5]'
-                        : 'border-[#D0D0D0] hover:border-[#0A0A0A] bg-[#FAFAFA] hover:bg-[#F7F7F7]'
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-white border border-[#E5E5E5] flex items-center justify-center text-[#666] mb-1">
-                      <UploadCloud size={18} />
-                    </div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wider font-medium text-[#0A0A0A]">
-                        Upload Product Image
-                      </p>
-                      <p className="text-xs text-[#777] mt-0.5">
-                        Click to choose an image from your device or drag and drop
-                      </p>
-                    </div>
-                    <p className="text-[10px] tracking-wider uppercase text-[#999] mt-1">
-                      JPG, PNG, WebP · Auto-optimized if &gt; 5MB
-                    </p>
-                  </div>
-                )}
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                />
-
-                {imageUploadError && (
-                  <div className="mt-2 bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 text-xs flex items-center gap-2">
-                    <AlertCircle size={14} className="shrink-0" />
-                    <span>{imageUploadError}</span>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-[#666] mb-1.5 font-medium">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Tailored silhouette in breathable cotton..."
-                  className="w-full border border-[#D0D0D0] px-3.5 py-2 text-sm focus:outline-none focus:border-[#0A0A0A] resize-none"
-                />
-              </div>
-
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-[#E8E8E8] shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs tracking-wider uppercase border border-[#E8E8E8] hover:border-[#0A0A0A] transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || uploadingImage}
-                  className="bg-[#0A0A0A] text-white px-5 py-2 text-xs tracking-wider uppercase hover:bg-[#333333] transition-colors disabled:opacity-50"
-                >
-                  {uploadingImage ? 'Uploading image...' : submitting ? 'Saving...' : editingProduct ? 'Update Product' : 'Create Product'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
+      {/* Reusable Add / Edit Product Modal */}
+      <ProductFormModal
+        isOpen={isModalOpen}
+        product={editingProduct}
+        categories={uniqueCategories}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={handleProductSaved}
+      />
     </AdminLayout>
   );
 }
