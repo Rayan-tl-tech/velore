@@ -21,6 +21,7 @@ export default function Hero() {
         <img
           src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1920&h=1080&fit=crop"
           alt="Spring Summer 2026 collection"
+          fetchPriority="high"
           className={`w-full h-full object-cover transform transition-[transform,opacity] duration-[1000ms] ease-out ${
             mounted ? 'scale-100 opacity-100' : 'scale-[1.04] opacity-80'
           }`}
