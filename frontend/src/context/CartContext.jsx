@@ -8,6 +8,7 @@ import {
 } from '../services/api/cartService';
 import { createOrder as createOrderApi } from '../services/api/orderService';
 import { useAuth } from './AuthContext';
+import { DEFAULT_PRODUCT_IMAGE } from '../utils/formatters';
 
 const CartContext = createContext(null);
 const GUEST_CART_KEY = 'velor_guest_cart';
@@ -148,7 +149,7 @@ export function CartProvider({ children }) {
               _id: productId,
               name: 'VÉLOR Piece',
               price: 6900,
-              image: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop',
+              image: DEFAULT_PRODUCT_IMAGE,
             },
             quantity: qty,
             size,

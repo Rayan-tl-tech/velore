@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ShoppingBag, Plus, Minus, Loader2, Check } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { formatPrice } from '../../data/products';
-import { getImageUrl } from '../../utils/formatters';
+import { getImageUrl, DEFAULT_PRODUCT_IMAGE } from '../../utils/formatters';
 
 export default function ProductDetailModal({ product, onClose, onShowToast }) {
   const { addToCart } = useCart();
@@ -112,11 +112,11 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
         {/* Product Image */}
         <div className="md:w-1/2 bg-[#F0F0F0] relative overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-full">
           <img
-            src={product.image ? getImageUrl(product.image) : 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop'}
+            src={product.image ? getImageUrl(product.image) : DEFAULT_PRODUCT_IMAGE}
             alt={product.name}
             className="w-full h-full object-cover"
             onError={(e) => {
-              e.currentTarget.src = 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop';
+              e.currentTarget.src = DEFAULT_PRODUCT_IMAGE;
             }}
           />
           {outOfStock && (

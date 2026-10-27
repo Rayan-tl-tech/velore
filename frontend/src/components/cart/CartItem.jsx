@@ -1,5 +1,5 @@
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import { getImageUrl } from '../../utils/formatters';
+import { getImageUrl, DEFAULT_PRODUCT_IMAGE } from '../../utils/formatters';
 import { formatPrice } from '../../data/products';
 
 /**
@@ -23,7 +23,7 @@ export default function CartItem({
           src={
             p.image
               ? getImageUrl(p.image)
-              : 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop'
+              : DEFAULT_PRODUCT_IMAGE
           }
           alt={p.name}
           className="w-full h-full object-cover"

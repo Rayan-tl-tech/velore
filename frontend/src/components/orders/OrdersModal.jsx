@@ -3,7 +3,7 @@ import { X, Package, Calendar, Loader2, MapPin, Phone, Truck } from 'lucide-reac
 import { getMyOrders, getAllOrders } from '../../services/api/orderService';
 import { useAuth } from '../../context/AuthContext';
 import { formatPrice } from '../../data/products';
-import { getImageUrl } from '../../utils/formatters';
+import { getImageUrl, DEFAULT_PRODUCT_IMAGE } from '../../utils/formatters';
 
 export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
   const { user, isAdmin } = useAuth();
@@ -255,7 +255,7 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-13 bg-[#E8E8E8] overflow-hidden shrink-0">
                                 <img
-                                  src={product.image ? getImageUrl(product.image) : 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop'}
+                                  src={product.image ? getImageUrl(product.image) : DEFAULT_PRODUCT_IMAGE}
                                   alt={product.name || 'VÉLOR'}
                                   className="w-full h-full object-cover"
                                 />

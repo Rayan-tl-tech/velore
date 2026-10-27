@@ -14,6 +14,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getInitials } from '../../utils/formatters';
 
 const navItems = [
   { label: 'Overview', path: '/admin', icon: LayoutDashboard },
@@ -30,9 +31,7 @@ export default function AdminLayout({ children }) {
 
   const currentPage = navItems.find((item) => item.path === location.pathname)?.label || 'Overview';
 
-  const userInitials = user?.name
-    ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'AD';
+  const userInitials = getInitials(user?.name) || 'AD';
 
   return (
     <div className="min-h-screen flex bg-[#F5F5F5] w-full">

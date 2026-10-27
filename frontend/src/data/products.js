@@ -224,6 +224,6 @@ export const products = [
   },
 ];
 
-export const formatPrice = (price) => {
-  return new Intl.NumberFormat('fr-DZ').format(price) + " DA";
-};
+// Re-export formatPrice from central formatters utility
+export { formatPrice } from '../utils/formatters';
+

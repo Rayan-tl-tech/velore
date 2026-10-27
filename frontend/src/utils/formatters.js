@@ -9,6 +9,13 @@ export const formatPrice = (price) => {
 };
 
 /**
+ * Default high-resolution fallback image for products without a specific image.
+ */
+export const DEFAULT_PRODUCT_IMAGE =
+  'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop';
+
+/**
+
  * Build a full image URL for a product image filename.
  * If the image is null/empty, returns a placeholder.
  */
