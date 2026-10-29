@@ -9,6 +9,8 @@ import Product from './models/productModel.js';
 import User from './models/userModel.js';
 import { getDatabaseName } from './config/db.js';
 
+const FORBIDDEN_DATABASES = ['velor', 'velor_prod', 'production', 'velor_dev'];
+
 const velorProducts = [
   // New Arrivals / Women
   {
@@ -148,18 +150,62 @@ const velorProducts = [
 ];
 
 async function seed() {
+  let isConnected = false;
+
   try {
-    if (process.env.NODE_ENV === 'production') {
-      console.error('⛔ SAFETY ABORT: Seeding directly against production environment is blocked.');
-      process.exit(1);
+    // 1. Pre-connection safety checks
+    if (process.env.NODE_ENV !== 'test') {
+      throw new Error(
+        'SAFETY ABORT: Seeding is strictly restricted to test environment (NODE_ENV must be "test").'
+      );
     }
 
     const targetDb = getDatabaseName();
-    console.log(`Connecting to MongoDB (target database: ${targetDb})...`);
-    await mongoose.connect(process.env.MONGO_URI, { dbName: targetDb });
-    console.log(`Connected to MongoDB Atlas: database "${targetDb}".`);
+    if (targetDb !== 'velor_test') {
+      throw new Error(
+        `SAFETY ABORT: Target database must strictly be 'velor_test', got '${targetDb}'.`
+      );
+    }
 
-    // 1. Seed or Verify Users
+    if (!process.env.MONGO_URI) {
+      throw new Error('SAFETY ABORT: MONGO_URI environment variable is required.');
+    }
+
+    console.log(`Connecting to MongoDB Atlas (target database: ${targetDb})...`);
+    await mongoose.connect(process.env.MONGO_URI, { dbName: targetDb });
+    isConnected = true;
+
+    // 2. Post-connection real database name verification
+    const activeDb = mongoose.connection.name;
+    if (activeDb !== 'velor_test' || FORBIDDEN_DATABASES.includes(activeDb)) {
+      throw new Error(
+        `CRITICAL SAFETY ABORT: Active database is '${activeDb}', strictly forbidden. Required: 'velor_test'. Aborting.`
+      );
+    }
+
+    console.log(`✅ Verified active MongoDB database: "${activeDb}".`);
+
+    // 3. Seed or Verify Users (conforming to User schema: roles array)
+    // 3.1 Test Admin account (used by regression, phase 3 auth, and phase 4 audit test suites)
+    const existingTestAdmin = await User.findOne({ email: 'test123@gmail.com' });
+    if (!existingTestAdmin) {
+      const hashedPassword = await bcrypt.hash('test123', 10);
+      await User.create({
+        name: 'VÉLOR Test Admin',
+        email: 'test123@gmail.com',
+        password: hashedPassword,
+        roles: ['admin', 'user'],
+        phone: '0550123456',
+        wilaya: 'Alger',
+        commune: 'Hydra',
+        address: 'Boulevard de la Liberté',
+      });
+      console.log('✅ Test Admin account created: test123@gmail.com');
+    } else {
+      console.log('ℹ️ Test Admin account already exists (left intact): test123@gmail.com');
+    }
+
+    // 3.2 Primary Admin account
     const existingAdmin = await User.findOne({ email: 'admin@velor.com' });
     if (!existingAdmin) {
       const hashedPassword = await bcrypt.hash('Admin1234!', 10);
@@ -167,17 +213,18 @@ async function seed() {
         name: 'VÉLOR Admin',
         email: 'admin@velor.com',
         password: hashedPassword,
-        role: 'admin',
+        roles: ['admin', 'user'],
         phone: '0550123456',
         wilaya: 'Alger',
         commune: 'Hydra',
         address: 'Boulevard de la Liberté',
       });
-      console.log('✅ Admin account created: admin@velor.com / Admin1234!');
+      console.log('✅ Admin account created: admin@velor.com');
     } else {
-      console.log('ℹ️ Admin account already exists in velor db.');
+      console.log('ℹ️ Admin account already exists (left intact): admin@velor.com');
     }
 
+    // 3.3 Customer account (used in auth tests)
     const existingUser = await User.findOne({ email: 'client@velor.com' });
     if (!existingUser) {
       const hashedPassword = await bcrypt.hash('Client1234!', 10);
@@ -185,16 +232,18 @@ async function seed() {
         name: 'Amina Mansouri',
         email: 'client@velor.com',
         password: hashedPassword,
-        role: 'user',
+        roles: ['user'],
         phone: '0661234567',
         wilaya: 'Oran',
         commune: 'Oran',
         address: 'Rue Ben M’hidi',
       });
-      console.log('✅ Customer account created: client@velor.com / Client1234!');
+      console.log('✅ Customer account created: client@velor.com');
+    } else {
+      console.log('ℹ️ Customer account already exists (left intact): client@velor.com');
     }
 
-    // Also seed user Rayan if not present
+    // 3.4 Secondary Admin account
     const existingRayan = await User.findOne({ email: 'rayanoo1234567890@gmail.com' });
     if (!existingRayan) {
       const hashedPassword = await bcrypt.hash('Rayan1234!', 10);
@@ -202,33 +251,38 @@ async function seed() {
         name: 'Rayan Tlili',
         email: 'rayanoo1234567890@gmail.com',
         password: hashedPassword,
-        role: 'admin',
+        roles: ['admin', 'user'],
         phone: '0550123456',
         wilaya: 'Alger',
         commune: 'Alger Centre',
         address: 'Didouche Mourad',
       });
-      console.log('✅ User account created: rayanoo1234567890@gmail.com');
+      console.log('✅ Admin account created: rayanoo1234567890@gmail.com');
+    } else {
+      console.log('ℹ️ Admin account already exists (left intact): rayanoo1234567890@gmail.com');
     }
 
-    // 2. Ensure Categories
+    // 4. Ensure Categories (without modifying existing categories)
     const categoriesMap = {};
     for (const catName of ['Men', 'Women', 'Kids']) {
       let cat = await Category.findOne({ name: catName });
       if (!cat) {
         cat = await Category.create({ name: catName });
         console.log(`✅ Created Category: ${catName}`);
+      } else {
+        console.log(`ℹ️ Category already exists (left intact): ${catName}`);
       }
       categoriesMap[catName] = cat._id;
     }
 
-    // 3. Seed Products (16 items)
+    // 5. Seed Products (without modifying existing products)
     let createdCount = 0;
+    let untouchedCount = 0;
     for (const item of velorProducts) {
       const categoryId = categoriesMap[item.categoryName];
-      let prod = await Product.findOne({ name: item.name });
+      const prod = await Product.findOne({ name: item.name });
       if (!prod) {
-        prod = await Product.create({
+        const createdProd = await Product.create({
           name: item.name,
           price: item.price,
           description: item.description,
@@ -237,13 +291,10 @@ async function seed() {
           category: categoryId,
         });
         createdCount++;
-        console.log(`✅ Created product [${prod._id}]: ${item.name} (${item.categoryName})`);
+        console.log(`✅ Created product [${createdProd._id}]: ${item.name} (${item.categoryName})`);
       } else {
-        prod.price = item.price;
-        prod.image = item.image;
-        prod.category = categoryId;
-        if (prod.stock <= 0) prod.stock = item.stock;
-        await prod.save();
+        untouchedCount++;
+        console.log(`ℹ️ Product already exists (left intact): ${item.name}`);
       }
     }
 
@@ -251,15 +302,22 @@ async function seed() {
     const totalCats = await Category.countDocuments();
     const totalUsers = await User.countDocuments();
 
-    console.log(`\n🎉 VÉLOR Database "${targetDb}" seeding complete!`);
-    console.log(`   - Products: ${totalProds}`);
+    console.log(`\n🎉 VÉLOR Database "${activeDb}" seeding complete!`);
+    console.log(`   - Products: ${totalProds} (newly created: ${createdCount}, intact: ${untouchedCount})`);
     console.log(`   - Categories: ${totalCats}`);
     console.log(`   - Users: ${totalUsers}`);
-
-    process.exit(0);
   } catch (err) {
-    console.error('Seeding error:', err);
-    process.exit(1);
+    console.error('❌ Seeding error:', err.message || err);
+    process.exitCode = 1;
+  } finally {
+    if (isConnected || mongoose.connection.readyState !== 0) {
+      try {
+        await mongoose.disconnect();
+        console.log('🔌 Disconnected from MongoDB cleanly.');
+      } catch (discErr) {
+        console.error('❌ Error during MongoDB disconnect:', discErr.message || discErr);
+      }
+    }
   }
 }
 
