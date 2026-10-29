@@ -2,7 +2,18 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Safety Guard: Refuse to run test suite in production or against non-local host
+if (process.env.NODE_ENV === 'production') {
+  console.error('⛔ FATAL: Cannot run auth security test suite in production environment!');
+  process.exit(1);
+}
+
 const BASE_URL = 'http://localhost:5000';
+if (!BASE_URL.includes('localhost') && !BASE_URL.includes('127.0.0.1')) {
+  console.error(`⛔ FATAL: Refusing to run tests against remote URL: ${BASE_URL}`);
+  process.exit(1);
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'test_secret';
 
 // Helper to extract cookie from Set-Cookie header
@@ -45,6 +56,9 @@ async function runPhase3Tests() {
     },
     body: JSON.stringify({ email: 'client@velor.com', password: 'Client1234!' }),
   });
+  if (loginRes.status === 429) {
+    record('Initial login endpoint', false, 'HTTP 429 Rate limited (authLimiter window exceeded)');
+  }
   const loginData = await loginRes.json();
   const validAccessToken = loginData.accessToken || loginData.token;
   const initialRefreshCookie = extractCookie(loginRes, 'refreshToken');
@@ -298,6 +312,10 @@ async function runPhase3Tests() {
   const adminLoginData = await adminLoginRes.json();
   const adminAccessToken = adminLoginData.accessToken || adminLoginData.token;
 
+  if (adminLoginRes.status === 429) {
+    record('Admin login token acquired', false, 'HTTP 429 Rate limited (authLimiter window exceeded)');
+  }
+
   // Admin access token accessing admin users list -> 200
   const adminUsersRes = await fetch(`${BASE_URL}/api/users`, {
     headers: { Authorization: `Bearer ${adminAccessToken}` },
@@ -305,8 +323,9 @@ async function runPhase3Tests() {
   record('Admin token accesses admin endpoints (200 OK)', adminUsersRes.status === 200);
 
   // Expired admin access token -> 401
+  const adminUserId = adminLoginData?.user?._id || 'mock_admin_id';
   const expiredAdminToken = jwt.sign(
-    { id: adminLoginData.user._id, roles: ['admin'] },
+    { id: adminUserId, roles: ['admin'] },
     JWT_SECRET,
     { expiresIn: '0s' }
   );

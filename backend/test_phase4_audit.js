@@ -13,7 +13,17 @@ try {
 
 dotenv.config();
 
+// Safety Guard: Refuse to run test suite in production or against non-local host
+if (process.env.NODE_ENV === 'production') {
+  console.error('⛔ FATAL: Cannot run audit test suite in production environment!');
+  process.exit(1);
+}
+
 const BASE_URL = 'http://localhost:5000';
+if (!BASE_URL.includes('localhost') && !BASE_URL.includes('127.0.0.1')) {
+  console.error(`⛔ FATAL: Refusing to run tests against remote URL: ${BASE_URL}`);
+  process.exit(1);
+}
 
 async function runPhase4AuditTests() {
   console.log('🛡️  Starting VÉLOR Phase 4 Security Hardening & Audit Test Suite...\n');
@@ -30,36 +40,58 @@ async function runPhase4AuditTests() {
     }
   }
 
-  // Connect to DB for internal verification if not connected
-  if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(process.env.MONGO_URI);
-  }
+  // Track created resources for guaranteed cleanup in finally
+  let userId = null;
+  let attackerId = null;
+  let createdOrderId = null;
+  let sampleProduct = null;
+  let orderCreatedAndStockDeducted = false;
+  let testError = null;
+  const cleanupErrors = [];
 
-  // Setup test users
-  const timestamp = Date.now();
-  const userEmail = `sec_audit_${timestamp}@velor-audit.com`;
-  const attackerEmail = `attacker_${timestamp}@velor-audit.com`;
-  const initialPassword = 'SecurePassword123!';
+  try {
+    // Connect to DB for internal verification if not connected
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGO_URI);
+    }
 
-  // Register User A
-  const regRes = await fetch(`${BASE_URL}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Audit User A', email: userEmail, password: initialPassword }),
-  });
-  const regData = await regRes.json();
-  const userToken = regData.accessToken;
-  const userId = regData.user._id;
+    // Setup test users
+    const timestamp = Date.now();
+    const userEmail = `sec_audit_${timestamp}@velor-audit.com`;
+    const attackerEmail = `attacker_${timestamp}@velor-audit.com`;
+    const initialPassword = 'SecurePassword123!';
 
-  // Register Attacker
-  const attRes = await fetch(`${BASE_URL}/api/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: 'Attacker User', email: attackerEmail, password: initialPassword }),
-  });
-  const attData = await attRes.json();
-  const attackerToken = attData.accessToken;
-  const attackerId = attData.user._id;
+    // Register User A
+    const regRes = await fetch(`${BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Audit User A', email: userEmail, password: initialPassword }),
+    });
+    if (regRes.status === 429) {
+      throw new Error('Registration rate-limited (HTTP 429). Sensitive endpoint rate limiter is active.');
+    }
+    const regData = await regRes.json();
+    const userToken = regData.accessToken;
+    userId = regData?.user?._id;
+    if (!userToken || !userId) {
+      throw new Error(`Failed to register audit user: Status ${regRes.status} - ${JSON.stringify(regData)}`);
+    }
+
+    // Register Attacker
+    const attRes = await fetch(`${BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Attacker User', email: attackerEmail, password: initialPassword }),
+    });
+    if (attRes.status === 429) {
+      throw new Error('Attacker registration rate-limited (HTTP 429). Sensitive endpoint rate limiter is active.');
+    }
+    const attData = await attRes.json();
+    const attackerToken = attData.accessToken;
+    attackerId = attData?.user?._id;
+    if (!attackerToken || !attackerId) {
+      throw new Error(`Failed to register attacker user: Status ${attRes.status} - ${JSON.stringify(attData)}`);
+    }
 
   // Login admin account
   const adminRes = await fetch(`${BASE_URL}/api/auth/login`, {
@@ -182,8 +214,13 @@ async function runPhase4AuditTests() {
 
   console.log('\n--- 2. Phase 4.5 — Business Logic & Server Authoritative Pricing Tests ---');
   // 2.1 Price manipulation attack: Attacker attempts to place an order specifying a manipulated price of 1 DZD
-  const sampleProduct = await Product.findOne();
-  if (sampleProduct) {
+  sampleProduct = await Product.findOne({ stock: { $gte: 2 } });
+  if (!sampleProduct) {
+    assert(
+      false,
+      'Order Creation Precondition: No product with sufficient stock (>= 2) found in catalog. Tests cannot proceed safely without altering stock.'
+    );
+  } else {
     const manipulatedOrderRes = await fetch(`${BASE_URL}/api/orders`, {
       method: 'POST',
       headers: {
@@ -211,33 +248,41 @@ async function runPhase4AuditTests() {
         paymentMethod: 'cod',
       }),
     });
-    const orderData = await manipulatedOrderRes.json();
-    assert(
-      manipulatedOrderRes.status === 201 && orderData?.order?._id,
-      'Order Creation: API accepted request'
-    );
 
-    // Verify authoritative DB price was applied rather than the client payload
-    const createdOrderId = orderData?.order?._id;
-    const createdOrder = await Order.findById(createdOrderId);
-    const expectedSubtotal = sampleProduct.price * 2;
-    assert(
-      createdOrder.items[0].price === sampleProduct.price,
-      `Server Pricing Authority: Product price in order (${createdOrder.items[0].price} DZD) enforced from DB, ignoring client manipulated value (1 DZD)`
-    );
-    assert(
-      createdOrder.totalPrice >= expectedSubtotal,
-      `Server Total Authority: Total price (${createdOrder.totalPrice} DZD) calculated authoritatively server-side`
-    );
-    assert(
-      createdOrder.shippingFee > 0,
-      `Server Shipping Authority: Algerian Wilaya delivery fee (${createdOrder.shippingFee} DZD) computed server-side, ignoring client 0 DZD`
-    );
+    if (manipulatedOrderRes.status === 429) {
+      assert(false, 'Order Creation: HTTP 429 Too Many Requests (Order rate limit reached)');
+    } else {
+      const orderData = await manipulatedOrderRes.json();
+      assert(
+        manipulatedOrderRes.status === 201 && orderData?.order?._id,
+        `Order Creation: API accepted request (Status: ${manipulatedOrderRes.status})`
+      );
 
-    // Clean up test order
-    await Order.findByIdAndDelete(createdOrderId);
-  } else {
-    console.log('  ⚠️ Warning: No products found for price manipulation test');
+      if (orderData?.order?._id) {
+        createdOrderId = orderData.order._id;
+        orderCreatedAndStockDeducted = true;
+
+        // Verify authoritative DB price was applied rather than the client payload
+        const createdOrder = await Order.findById(createdOrderId);
+        if (createdOrder && Array.isArray(createdOrder.items) && createdOrder.items.length > 0) {
+          const expectedSubtotal = sampleProduct.price * 2;
+          assert(
+            createdOrder.items[0].price === sampleProduct.price,
+            `Server Pricing Authority: Product price in order (${createdOrder.items[0].price} DZD) enforced from DB, ignoring client manipulated value (1 DZD)`
+          );
+          assert(
+            createdOrder.totalPrice >= expectedSubtotal,
+            `Server Total Authority: Total price (${createdOrder.totalPrice} DZD) calculated authoritatively server-side`
+          );
+          assert(
+            createdOrder.shippingFee > 0,
+            `Server Shipping Authority: Algerian Wilaya delivery fee (${createdOrder.shippingFee} DZD) computed server-side, ignoring client 0 DZD`
+          );
+        } else {
+          assert(false, 'Server Order Authority: Created order could not be retrieved from DB for inspection');
+        }
+      }
+    }
   }
 
   console.log('\n--- 3. Phase 4.1 & 4.8 — Input Validation & NoSQL Injection Hardening ---');
@@ -339,17 +384,99 @@ async function runPhase4AuditTests() {
     'CORS Security: Untrusted origin rejected on preflight with HTTP 403'
   );
 
-  // Cleanup test accounts
-  await User.findByIdAndDelete(userId);
-  await User.findByIdAndDelete(attackerId);
-  await Session.deleteMany({ userId: { $in: [userId, attackerId] } });
-  console.log('✅ Cleanup: Audit test accounts and sessions removed');
+  } catch (err) {
+    testError = err;
+    console.error('\n❌ Test execution interrupted by error:', err.message);
+  } finally {
+    console.log('\n--- Guaranteed Cleanup Phase ---');
+    // 1. Order cleanup & atomic stock restoration
+    if (createdOrderId) {
+      try {
+        const deletedOrder = await Order.findByIdAndDelete(createdOrderId);
+        if (deletedOrder) {
+          console.log(`  ✅ Cleanup: Test order ${createdOrderId} removed from DB`);
+        } else {
+          cleanupErrors.push(`Test order ${createdOrderId} was not found for deletion`);
+        }
+      } catch (err) {
+        cleanupErrors.push(`Failed to delete test order ${createdOrderId}: ${err.message}`);
+      }
+    }
+
+    if (orderCreatedAndStockDeducted && sampleProduct?._id) {
+      try {
+        // Atomic compensation: restore exact 2 units without overwriting concurrent client sales
+        await Product.findByIdAndUpdate(sampleProduct._id, { $inc: { stock: 2 } });
+        console.log(`  ✅ Stock Restored: Atomically restored 2 units to product "${sampleProduct.name}" (ID: ${sampleProduct._id})`);
+      } catch (err) {
+        cleanupErrors.push(`Failed to restore stock for product ${sampleProduct._id}: ${err.message}`);
+      }
+    }
+
+    // 2. User & Attacker cleanup
+    if (userId) {
+      try {
+        const delUser = await User.findByIdAndDelete(userId);
+        if (delUser) {
+          console.log(`  ✅ Cleanup: Test user ${userId} removed from DB`);
+        } else {
+          cleanupErrors.push(`Test user ${userId} was not found for deletion`);
+        }
+      } catch (err) {
+        cleanupErrors.push(`Failed to delete user ${userId}: ${err.message}`);
+      }
+    }
+
+    if (attackerId) {
+      try {
+        const delAtt = await User.findByIdAndDelete(attackerId);
+        if (delAtt) {
+          console.log(`  ✅ Cleanup: Attacker user ${attackerId} removed from DB`);
+        } else {
+          cleanupErrors.push(`Attacker user ${attackerId} was not found for deletion`);
+        }
+      } catch (err) {
+        cleanupErrors.push(`Failed to delete attacker ${attackerId}: ${err.message}`);
+      }
+    }
+
+    // 3. Session cleanup
+    const userIdsToClean = [userId, attackerId].filter(Boolean);
+    if (userIdsToClean.length > 0) {
+      try {
+        const delSessions = await Session.deleteMany({ userId: { $in: userIdsToClean } });
+        console.log(`  ✅ Cleanup: ${delSessions.deletedCount} sessions removed`);
+      } catch (err) {
+        cleanupErrors.push(`Failed to delete test sessions: ${err.message}`);
+      }
+    }
+
+    // 4. DB connection cleanup
+    try {
+      if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+      }
+    } catch {}
+
+    if (cleanupErrors.length > 0) {
+      console.error('\n⚠️ CLEANUP WARNINGS / ERRORS:');
+      cleanupErrors.forEach((err) => console.error(`  - ${err}`));
+    }
+  }
 
   console.log('\n======================================================');
   console.log(`Phase 4 Audit Tests Complete: ${passed} PASSED, ${failed} FAILED`);
+  if (cleanupErrors.length > 0) {
+    console.error(`⚠️ Incomplete cleanup: ${cleanupErrors.length} error(s) during cleanup`);
+  }
   console.log('======================================================');
 
-  if (failed > 0) {
+  // Never mask initial functional test error
+  if (testError) {
+    throw testError;
+  }
+
+  if (failed > 0 || cleanupErrors.length > 0) {
     process.exit(1);
   } else {
     process.exit(0);
@@ -357,6 +484,6 @@ async function runPhase4AuditTests() {
 }
 
 runPhase4AuditTests().catch((err) => {
-  console.error('Audit test suite encountered fatal error:', err);
+  console.error('\nAudit test suite encountered fatal error:', err);
   process.exit(1);
 });
