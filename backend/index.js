@@ -42,6 +42,7 @@ if (process.env.NODE_ENV === 'production') {
   }
 }
 
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import { cookieParserMiddleware, csrfProtectionMiddleware } from './middlewares/csrfMiddleware.js';
 import authRoutes from './routes/authRoute.js';
@@ -187,6 +188,28 @@ const passwordResetLimiter = rateLimit({
     error: 'Too many password reset requests. Please try again after 15 minutes.',
     success: false,
   },
+});
+
+// Safe health & environment diagnostic endpoint for test isolation verification
+app.get('/api/health', (_req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  // In production, keep diagnostic minimal: do not expose internal DB names or topology
+  if (isProd) {
+    return res.status(isConnected ? 200 : 503).json({
+      status: isConnected ? 'ok' : 'degraded',
+      message: 'E-commerce API is active and running!',
+    });
+  }
+
+  // Non-production (test & dev): allow local test runners to strictly verify active DB
+  res.status(isConnected ? 200 : 503).json({
+    status: isConnected ? 'ok' : 'degraded',
+    env: process.env.NODE_ENV || 'development',
+    database: isConnected ? (mongoose.connection.name || null) : null,
+    connected: isConnected,
+  });
 });
 
 // Health check endpoint for deployment monitoring

@@ -1,16 +1,48 @@
+// Strict Safety Guard 1: Must run exclusively in 'test' environment
+if (process.env.NODE_ENV !== 'test') {
+  console.error(`⛔ SAFETY ABORT: Automated regression test strictly requires NODE_ENV='test'. Current value: '${process.env.NODE_ENV || 'undefined'}'.`);
+  process.exit(1);
+}
+
 const BASE_URL = 'http://localhost:5000';
 
-// Safety Guard: Refuse to execute against production or remote URLs
-if (process.env.NODE_ENV === 'production' || (!BASE_URL.includes('localhost') && !BASE_URL.includes('127.0.0.1'))) {
-  console.error('⛔ SAFETY ABORT: Automated regression test cannot run against production environment or remote URL.');
+// Strict Safety Guard 2: Refuse to execute against remote URLs
+if (!BASE_URL.includes('localhost') && !BASE_URL.includes('127.0.0.1')) {
+  console.error(`⛔ SAFETY ABORT: Refusing to run tests against remote URL: ${BASE_URL}`);
   process.exit(1);
 }
 
 async function runRegression() {
   console.log('🔄 Starting Full Functional Regression Tests...\n');
 
+  // Strict Safety Guard 3: Verify that the local API is running and connected strictly to 'velor_test'
+  let healthData;
+  try {
+    const healthRes = await fetch(`${BASE_URL}/api/health`);
+    if (!healthRes.ok) {
+      console.error(`⛔ SAFETY ABORT: Backend health check failed with HTTP ${healthRes.status}.`);
+      process.exit(1);
+    }
+    healthData = await healthRes.json();
+  } catch (err) {
+    console.error(`⛔ SAFETY ABORT: Cannot connect to backend server at ${BASE_URL}/api/health (${err.message}). Ensure the backend is started with NODE_ENV=test.`);
+    process.exit(1);
+  }
+
+  const FORBIDDEN_DATABASES = ['velor', 'velor_dev', 'velor_prod', 'production', 'ecommerce'];
+  if (healthData.env !== 'test' || healthData.database !== 'velor_test') {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Backend is running in env '${healthData.env}' on database '${healthData.database}'. Regression tests are STRICTLY prohibited on databases other than 'velor_test'!`);
+    process.exit(1);
+  }
+  if (FORBIDDEN_DATABASES.includes(healthData.database)) {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Forbidden target database detected: '${healthData.database}'. Immediate shutdown.`);
+    process.exit(1);
+  }
+  console.log(`🔒 Isolation Verified: Backend confirmed running in test mode on database '${healthData.database}'.\n`);
+
   let userId = null;
   let testProduct = null;
+  let tempOrderProdId = null;
   let createdOrderId = null;
   let adminToken = null;
   let newProdId = null;
@@ -91,8 +123,30 @@ async function runRegression() {
     if (!Array.isArray(categories) || categories.length === 0) throw new Error('No categories returned');
     console.log(`✅ Categories: Fetch all categories PASSED (${categories.length} categories)`);
 
-    // Select an in-stock product (requires stock >= 1 for order creation)
-    testProduct = products.find((p) => Number(p.stock) >= 1);
+    // Select or create a dedicated temporary product for cart & order testing
+    // to strictly prevent modifying pre-existing catalog stock
+    const adminTok = await ensureAdminToken();
+    if (adminTok && categories && categories.length > 0) {
+      const createTempRes = await fetch(`${BASE_URL}/api/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminTok}` },
+        body: JSON.stringify({
+          name: `Regression Temp Order Product ${Date.now()}`,
+          description: 'Temporary item for safe order testing',
+          price: 5000,
+          stock: 20,
+          category: categories[0]._id,
+          image: 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=800'
+        })
+      });
+      if (createTempRes.ok) {
+        testProduct = await createTempRes.json();
+        tempOrderProdId = testProduct._id;
+      }
+    }
+    if (!testProduct) {
+      testProduct = products.find((p) => Number(p.stock) >= 1);
+    }
     if (!testProduct) {
       throw new Error('No in-stock product available for regression testing. At least one product with stock >= 1 is required.');
     }
@@ -281,6 +335,21 @@ async function runRegression() {
           }
         } catch (e) {
           cleanupErrors.push(`Network error deleting product ${newProdId}: ${e.message}`);
+        }
+      }
+
+      // 3b. Delete temporary order product if created
+      if (tempOrderProdId) {
+        try {
+          const delTempOrderProdRes = await fetch(`${BASE_URL}/api/products/${tempOrderProdId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${cleanupAdminToken}` }
+          });
+          if (!delTempOrderProdRes.ok && delTempOrderProdRes.status !== 404) {
+            cleanupErrors.push(`Failed to delete temporary order product ${tempOrderProdId}: HTTP ${delTempOrderProdRes.status}`);
+          }
+        } catch (e) {
+          cleanupErrors.push(`Network error deleting temporary order product ${tempOrderProdId}: ${e.message}`);
         }
       }
 

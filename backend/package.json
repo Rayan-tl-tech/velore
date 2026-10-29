@@ -6,7 +6,11 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test:api": "node test_suite.js"
+    "test:api": "node test_suite.js",
+    "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js')\"",
+    "test:regression": "node -e \"process.env.NODE_ENV='test'; import('./test_regression.js')\"",
+    "test:phase4": "node -e \"process.env.NODE_ENV='test'; import('./test_phase4_audit.js')\"",
+    "test:phase3": "node -e \"process.env.NODE_ENV='test'; import('./test_phase3_auth_security.js')\""
   },
   "keywords": [],
   "author": "",

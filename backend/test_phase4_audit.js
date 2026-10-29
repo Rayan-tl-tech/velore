@@ -13,9 +13,9 @@ try {
 
 dotenv.config();
 
-// Safety Guard: Refuse to run test suite in production or against non-local host
-if (process.env.NODE_ENV === 'production') {
-  console.error('⛔ FATAL: Cannot run audit test suite in production environment!');
+// Strict Safety Guard 1: Must run exclusively in 'test' environment
+if (process.env.NODE_ENV !== 'test') {
+  console.error(`⛔ FATAL: Cannot run audit test suite outside of test environment! Strictly requires NODE_ENV='test'. Current: '${process.env.NODE_ENV || 'undefined'}'.`);
   process.exit(1);
 }
 
@@ -27,6 +27,32 @@ if (!BASE_URL.includes('localhost') && !BASE_URL.includes('127.0.0.1')) {
 
 async function runPhase4AuditTests() {
   console.log('🛡️  Starting VÉLOR Phase 4 Security Hardening & Audit Test Suite...\n');
+
+  // Strict Safety Guard 2: Verify backend API is actively running on 'velor_test'
+  let healthData;
+  try {
+    const healthRes = await fetch(`${BASE_URL}/api/health`);
+    if (!healthRes.ok) {
+      console.error(`⛔ SAFETY ABORT: Backend health check failed with HTTP ${healthRes.status}.`);
+      process.exit(1);
+    }
+    healthData = await healthRes.json();
+  } catch (err) {
+    console.error(`⛔ SAFETY ABORT: Cannot connect to backend server at ${BASE_URL}/api/health (${err.message}). Ensure backend is started with NODE_ENV=test.`);
+    process.exit(1);
+  }
+
+  const FORBIDDEN_DATABASES = ['velor', 'velor_dev', 'velor_prod', 'production', 'ecommerce'];
+  if (healthData.env !== 'test' || healthData.database !== 'velor_test') {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Backend is running in env '${healthData.env}' on database '${healthData.database}'. Audit tests are STRICTLY prohibited on databases other than 'velor_test'!`);
+    process.exit(1);
+  }
+  if (FORBIDDEN_DATABASES.includes(healthData.database)) {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Forbidden target database detected: '${healthData.database}'. Immediate shutdown.`);
+    process.exit(1);
+  }
+  console.log(`🔒 Isolation Verified: Backend confirmed running in test mode on database '${healthData.database}'.\n`);
+
   let passed = 0;
   let failed = 0;
 
@@ -45,15 +71,31 @@ async function runPhase4AuditTests() {
   let attackerId = null;
   let createdOrderId = null;
   let sampleProduct = null;
+  let tempAuditProductCreated = false;
   let orderCreatedAndStockDeducted = false;
   let testError = null;
   const cleanupErrors = [];
 
   try {
-    // Connect to DB for internal verification if not connected
+    // Connect to DB for internal verification if not connected - strictly targeting velor_test
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGO_URI);
+      await mongoose.connect(process.env.MONGO_URI, {
+        dbName: 'velor_test',
+      });
     }
+
+    const directDb = mongoose.connection.name;
+    if (directDb !== 'velor_test') {
+      await mongoose.disconnect();
+      console.error(`⛔ CRITICAL SAFETY ABORT: Direct Mongoose connection targeted '${directDb}', expected 'velor_test'!`);
+      process.exit(1);
+    }
+    if (FORBIDDEN_DATABASES.includes(directDb)) {
+      await mongoose.disconnect();
+      console.error(`⛔ CRITICAL SAFETY ABORT: Forbidden target database detected on direct connection: '${directDb}'. Immediate shutdown.`);
+      process.exit(1);
+    }
+    console.log(`🔒 Direct DB Verified: Mongoose connection confirmed on database '${directDb}'.\n`);
 
     // Setup test users
     const timestamp = Date.now();
@@ -214,7 +256,19 @@ async function runPhase4AuditTests() {
 
   console.log('\n--- 2. Phase 4.5 — Business Logic & Server Authoritative Pricing Tests ---');
   // 2.1 Price manipulation attack: Attacker attempts to place an order specifying a manipulated price of 1 DZD
-  sampleProduct = await Product.findOne({ stock: { $gte: 2 } });
+  // Dedicated temporary product on velor_test strictly avoids altering existing catalog items
+  try {
+    sampleProduct = await Product.create({
+      name: `Audit Price Authority Item ${Date.now()}`,
+      price: 6500,
+      stock: 10,
+      description: 'Dedicated temporary item for server authoritative pricing validation',
+    });
+    tempAuditProductCreated = true;
+  } catch {
+    sampleProduct = await Product.findOne({ stock: { $gte: 2 } });
+  }
+
   if (!sampleProduct) {
     assert(
       false,
@@ -403,7 +457,14 @@ async function runPhase4AuditTests() {
       }
     }
 
-    if (orderCreatedAndStockDeducted && sampleProduct?._id) {
+    if (tempAuditProductCreated && sampleProduct?._id) {
+      try {
+        await Product.findByIdAndDelete(sampleProduct._id);
+        console.log(`  ✅ Cleanup: Dedicated test product ${sampleProduct._id} removed from DB`);
+      } catch (err) {
+        cleanupErrors.push(`Failed to delete temporary test product ${sampleProduct._id}: ${err.message}`);
+      }
+    } else if (orderCreatedAndStockDeducted && sampleProduct?._id) {
       try {
         // Atomic compensation: restore exact 2 units without overwriting concurrent client sales
         await Product.findByIdAndUpdate(sampleProduct._id, { $inc: { stock: 2 } });

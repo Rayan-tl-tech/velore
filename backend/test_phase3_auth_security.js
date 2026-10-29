@@ -2,9 +2,9 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// Safety Guard: Refuse to run test suite in production or against non-local host
-if (process.env.NODE_ENV === 'production') {
-  console.error('⛔ FATAL: Cannot run auth security test suite in production environment!');
+// Strict Safety Guard 1: Must run exclusively in 'test' environment
+if (process.env.NODE_ENV !== 'test') {
+  console.error(`⛔ FATAL: Cannot run auth security test suite outside of test environment! Strictly requires NODE_ENV='test'. Current: '${process.env.NODE_ENV || 'undefined'}'.`);
   process.exit(1);
 }
 
@@ -27,6 +27,31 @@ function extractCookie(res, cookieName = 'refreshToken') {
 async function runPhase3Tests() {
   console.log('🛡️  Starting VÉLOR Phase 3 Authentication & Token Security Test Suite...\n');
 
+  // Strict Safety Guard 2: Verify backend API is actively running on 'velor_test'
+  let healthData;
+  try {
+    const healthRes = await fetch(`${BASE_URL}/api/health`);
+    if (!healthRes.ok) {
+      console.error(`⛔ SAFETY ABORT: Backend health check failed with HTTP ${healthRes.status}.`);
+      process.exit(1);
+    }
+    healthData = await healthRes.json();
+  } catch (err) {
+    console.error(`⛔ SAFETY ABORT: Cannot connect to backend server at ${BASE_URL}/api/health (${err.message}). Ensure backend is started with NODE_ENV=test.`);
+    process.exit(1);
+  }
+
+  const FORBIDDEN_DATABASES = ['velor', 'velor_dev', 'velor_prod', 'production', 'ecommerce'];
+  if (healthData.env !== 'test' || healthData.database !== 'velor_test') {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Backend is running in env '${healthData.env}' on database '${healthData.database}'. Auth security tests are STRICTLY prohibited on databases other than 'velor_test'!`);
+    process.exit(1);
+  }
+  if (FORBIDDEN_DATABASES.includes(healthData.database)) {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Forbidden target database detected: '${healthData.database}'. Immediate shutdown.`);
+    process.exit(1);
+  }
+  console.log(`🔒 Isolation Verified: Backend confirmed running in test mode on database '${healthData.database}'.\n`);
+
   const results = {
     passed: 0,
     failed: 0,
@@ -44,18 +69,35 @@ async function runPhase3Tests() {
     }
   };
 
-  // ─── 1. ACCESS TOKEN TESTS ───
-  console.log('--- 1. Access Token Lifecycle & Verification Tests ---');
+  // Dedicated temporary customer credentials to strictly prevent revoking real client accounts during logout-all
+  let tempUserId = null;
+  const tempCustomerEmail = `auth_test_${Date.now()}@velor-test.internal`;
+  const tempCustomerPassword = 'SecureClientPass123!';
 
-  // 1.1 Login to acquire access token & refresh cookie
-  const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Origin: 'http://localhost:5173',
-    },
-    body: JSON.stringify({ email: 'client@velor.com', password: 'Client1234!' }),
-  });
+  try {
+    // Register temporary isolated test user
+    const regRes = await fetch(`${BASE_URL}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'Auth Test Isolated User', email: tempCustomerEmail, password: tempCustomerPassword }),
+    });
+    if (regRes.status === 201) {
+      const regData = await regRes.json();
+      tempUserId = regData?.user?._id;
+    }
+
+    // ─── 1. ACCESS TOKEN TESTS ───
+    console.log('--- 1. Access Token Lifecycle & Verification Tests ---');
+
+    // 1.1 Login with temporary user to acquire access token & refresh cookie
+    const loginRes = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Origin: 'http://localhost:5173',
+      },
+      body: JSON.stringify({ email: tempCustomerEmail, password: tempCustomerPassword }),
+    });
   if (loginRes.status === 429) {
     record('Initial login endpoint', false, 'HTTP 429 Rate limited (authLimiter window exceeded)');
   }
@@ -342,7 +384,7 @@ async function runPhase3Tests() {
   const dev1Res = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
-    body: JSON.stringify({ email: 'client@velor.com', password: 'Client1234!' }),
+    body: JSON.stringify({ email: tempCustomerEmail, password: tempCustomerPassword }),
   });
   const dev1Data = await dev1Res.json();
   const dev1Token = dev1Data.accessToken || dev1Data.token;
@@ -352,7 +394,7 @@ async function runPhase3Tests() {
   const dev2Res = await fetch(`${BASE_URL}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:5173' },
-    body: JSON.stringify({ email: 'client@velor.com', password: 'Client1234!' }),
+    body: JSON.stringify({ email: tempCustomerEmail, password: tempCustomerPassword }),
   });
   const dev2Cookie = extractCookie(dev2Res, 'refreshToken');
 
@@ -379,6 +421,30 @@ async function runPhase3Tests() {
     },
   });
   record('Device 2 session revoked after logout-all (Multi-session revocation)', dev2RefreshRes.status === 401);
+
+  } finally {
+    // Purge temporary test user to leave zero residual data in velor_test
+    if (tempUserId) {
+      try {
+        const adminLogin = await fetch(`${BASE_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: 'test123@gmail.com', password: 'test123' }),
+        });
+        if (adminLogin.ok) {
+          const admData = await adminLogin.json();
+          const admTok = admData.accessToken || admData.token;
+          await fetch(`${BASE_URL}/api/users/${tempUserId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${admTok}` },
+          });
+          console.log(`\n✅ Cleanup: Dedicated temporary auth user (${tempCustomerEmail}) purged from DB.`);
+        }
+      } catch (err) {
+        console.warn('⚠️ Cleanup warning: Failed to purge temporary auth user:', err.message);
+      }
+    }
+  }
 
   console.log('\n======================================================');
   console.log(`Phase 3 Tests Complete: ${results.passed} PASSED, ${results.failed} FAILED`);

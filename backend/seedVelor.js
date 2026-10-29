@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import Category from './models/categoryModel.js';
 import Product from './models/productModel.js';
 import User from './models/userModel.js';
+import { getDatabaseName } from './config/db.js';
 
 const velorProducts = [
   // New Arrivals / Women
@@ -148,7 +149,12 @@ const velorProducts = [
 
 async function seed() {
   try {
-    const targetDb = process.env.DB_NAME || 'velor';
+    if (process.env.NODE_ENV === 'production') {
+      console.error('⛔ SAFETY ABORT: Seeding directly against production environment is blocked.');
+      process.exit(1);
+    }
+
+    const targetDb = getDatabaseName();
     console.log(`Connecting to MongoDB (target database: ${targetDb})...`);
     await mongoose.connect(process.env.MONGO_URI, { dbName: targetDb });
     console.log(`Connected to MongoDB Atlas: database "${targetDb}".`);
