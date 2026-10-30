@@ -9,7 +9,17 @@ import Product from './models/productModel.js';
 import User from './models/userModel.js';
 import { getDatabaseName } from './config/db.js';
 
-const FORBIDDEN_DATABASES = ['velor', 'velor_prod', 'production', 'velor_dev'];
+const FORBIDDEN_DATABASES = [
+  'velor',
+  'velor_prod',
+  'production',
+  'velor_test',
+  'ecommerce',
+  'testdb',
+  'admin',
+  'local'
+];
+const REQUIRED_DATABASE = 'velor_dev';
 
 const velorProducts = [
   // New Arrivals / Women
@@ -154,16 +164,23 @@ async function seed() {
 
   try {
     // 1. Pre-connection safety checks
-    if (process.env.NODE_ENV !== 'test') {
+    const currentEnv = process.env.NODE_ENV || 'development';
+    if (currentEnv !== 'development') {
       throw new Error(
-        'SAFETY ABORT: Seeding is strictly restricted to test environment (NODE_ENV must be "test").'
+        `SAFETY ABORT: Seeding is strictly restricted to development environment (NODE_ENV must be "development", got "${currentEnv}").`
       );
     }
 
     const targetDb = getDatabaseName();
-    if (targetDb !== 'velor_test') {
+    if (targetDb !== REQUIRED_DATABASE) {
       throw new Error(
-        `SAFETY ABORT: Target database must strictly be 'velor_test', got '${targetDb}'.`
+        `SAFETY ABORT: Target database must strictly be '${REQUIRED_DATABASE}', got '${targetDb}'.`
+      );
+    }
+
+    if (FORBIDDEN_DATABASES.includes(targetDb)) {
+      throw new Error(
+        `CRITICAL SAFETY ABORT: Target database '${targetDb}' is strictly forbidden. Required: '${REQUIRED_DATABASE}'. Aborting.`
       );
     }
 
@@ -177,9 +194,9 @@ async function seed() {
 
     // 2. Post-connection real database name verification
     const activeDb = mongoose.connection.name;
-    if (activeDb !== 'velor_test' || FORBIDDEN_DATABASES.includes(activeDb)) {
+    if (activeDb !== REQUIRED_DATABASE || FORBIDDEN_DATABASES.includes(activeDb)) {
       throw new Error(
-        `CRITICAL SAFETY ABORT: Active database is '${activeDb}', strictly forbidden. Required: 'velor_test'. Aborting.`
+        `CRITICAL SAFETY ABORT: Active database is '${activeDb}', strictly forbidden. Required: '${REQUIRED_DATABASE}'. Aborting.`
       );
     }
 
