@@ -2,8 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import { deleteImage } from './services/storageService.js';
 
 dotenv.config();
+
+// Strict Safety Guard 1: Must run exclusively in 'test' environment
+if (process.env.NODE_ENV !== 'test') {
+  console.error(`⛔ FATAL: Cannot run image optimization test suite outside of test environment! Strictly requires NODE_ENV='test'. Current: '${process.env.NODE_ENV || 'undefined'}'.`);
+  process.exit(1);
+}
 
 const BASE_URL = 'http://localhost:5000';
 const MAX_UPLOAD_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -68,6 +75,32 @@ function calculateDimensions(origWidth, origHeight, maxDimension) {
 
 async function runImageOptimizationTests() {
   console.log('🖼️  Starting VÉLOR Intelligent Product Image Optimization Test Suite...\n');
+
+  // Strict Safety Guard 2: Verify backend API is actively running on 'velor_test'
+  let healthData;
+  try {
+    const healthRes = await fetch(`${BASE_URL}/api/health`);
+    if (!healthRes.ok) {
+      console.error(`⛔ SAFETY ABORT: Backend health check failed with HTTP ${healthRes.status}.`);
+      process.exit(1);
+    }
+    healthData = await healthRes.json();
+  } catch (err) {
+    console.error(`⛔ SAFETY ABORT: Cannot connect to backend server at ${BASE_URL}/api/health (${err.message}). Ensure backend is started with NODE_ENV=test.`);
+    process.exit(1);
+  }
+
+  const FORBIDDEN_DATABASES = ['velor', 'velor_dev', 'velor_prod', 'production', 'ecommerce', 'testdb'];
+  if (healthData.env !== 'test' || healthData.database !== 'velor_test') {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Backend is running in env '${healthData.env}' on database '${healthData.database}'. Image optimization tests are STRICTLY prohibited on databases other than 'velor_test'!`);
+    process.exit(1);
+  }
+  if (FORBIDDEN_DATABASES.includes(healthData.database)) {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Forbidden target database detected: '${healthData.database}'. Immediate shutdown.`);
+    process.exit(1);
+  }
+  console.log(`🔒 Isolation Verified: Backend confirmed running in test mode on database '${healthData.database}'.\n`);
+
   let passed = 0;
   let failed = 0;
 
@@ -80,6 +113,126 @@ async function runImageOptimizationTests() {
       failed++;
     }
   }
+
+  // Cleanup tracking state
+  let adminToken = null;
+  let createdProductId = null;
+  let activeProductImage = null;
+  const pendingUploads = new Set();
+  let cleanupPromise = null;
+
+  const performCleanup = (triggerReason = 'NORMAL') => {
+    if (cleanupPromise) {
+      return cleanupPromise;
+    }
+
+    cleanupPromise = (async () => {
+      try {
+        let productDeleted = false;
+
+        // 1. Clean up temporary test product (and its active image)
+        if (createdProductId && adminToken) {
+          try {
+            const delRes = await fetch(`${BASE_URL}/api/products/${createdProductId}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${adminToken}` },
+            });
+            if (delRes.ok) {
+              productDeleted = true;
+              console.log(`  ✅ Cleanup: Temporary test product (${createdProductId}) removed via API`);
+            } else {
+              console.warn(`  ⚠️ Cleanup warning: Product delete returned HTTP ${delRes.status}`);
+            }
+          } catch (err) {
+            console.warn('  ⚠️ Cleanup warning: Failed to clean up test product via API:', err.message);
+          }
+
+          // Recovery attempt: retry delete once after short backoff if initial attempt failed
+          if (!productDeleted) {
+            try {
+              await new Promise((r) => setTimeout(r, 200));
+              const retryRes = await fetch(`${BASE_URL}/api/products/${createdProductId}`, {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${adminToken}` },
+              });
+              if (retryRes.ok) {
+                productDeleted = true;
+                console.log(`  ✅ Cleanup: Temporary test product (${createdProductId}) removed via API retry`);
+              } else {
+                console.warn(`  ⚠️ Cleanup warning: Product delete retry returned HTTP ${retryRes.status}`);
+              }
+            } catch (retryErr) {
+              console.warn('  ⚠️ Cleanup warning: Product delete retry failed:', retryErr.message);
+            }
+          }
+
+          if (productDeleted) {
+            // Backend deleteProduct() successfully deleted both the product document and its active image
+            activeProductImage = null;
+            createdProductId = null;
+          } else {
+            // Document could not be deleted from MongoDB
+            console.error(`  ❌ CRITICAL CLEANUP FAILURE: Product document (${createdProductId}) could NOT be deleted from MongoDB via API.`);
+
+            // Fallback direct storage deletion of active image (4.6 or 4.5) to avoid orphan asset
+            if (activeProductImage) {
+              console.log(`  🔄 Attempting fallback asset deletion for orphan active image: ${activeProductImage}...`);
+              try {
+                const imgDeleted = await deleteImage(activeProductImage);
+                if (imgDeleted) {
+                  console.log(`  ✅ Fallback cleanup: Orphan image asset confirmed deleted from storage (${activeProductImage})`);
+                  activeProductImage = null;
+                } else {
+                  console.error(`  ❌ Fallback cleanup failed: Deletion of active image could not be confirmed (${activeProductImage})`);
+                }
+              } catch (imgErr) {
+                console.error(`  ❌ Fallback cleanup exception for image asset (${activeProductImage}):`, imgErr.message);
+              }
+            }
+          }
+        }
+
+        // 2. Clean up standalone / unattached uploads (tests 4.1, 4.2, 4.3, and any unattached images)
+        if (pendingUploads.size > 0) {
+          let purgeCount = 0;
+          for (const url of Array.from(pendingUploads)) {
+            try {
+              const deleted = await deleteImage(url);
+              if (deleted) {
+                pendingUploads.delete(url);
+                purgeCount++;
+              } else {
+                console.error(`  ❌ Cleanup error: Deletion of upload '${url}' could not be confirmed. Reference retained.`);
+              }
+            } catch (err) {
+              console.error(`  ❌ Cleanup error: Exception while deleting upload '${url}':`, err.message);
+            }
+          }
+          if (purgeCount > 0) {
+            console.log(`  ✅ Cleanup: ${purgeCount} standalone test upload(s) confirmed purged`);
+          }
+          if (pendingUploads.size > 0) {
+            console.error(`  ⚠️ Cleanup alert: ${pendingUploads.size} test upload(s) could not be confirmed as deleted`);
+          }
+        }
+      } catch (fatalCleanupErr) {
+        console.error('  ❌ Unexpected error during cleanup sequence:', fatalCleanupErr.message);
+      }
+    })();
+
+    return cleanupPromise;
+  };
+
+  const signalHandler = async (signal) => {
+    console.log(`\n⚠️ Interruption detected (${signal}). Awaiting asset cleanup before exit...`);
+    await performCleanup(`SIGNAL_${signal}`);
+    process.exit(130);
+  };
+
+  process.once('SIGINT', signalHandler);
+  process.once('SIGTERM', signalHandler);
+
+  try {
 
   // 1. Logic & Decision Boundary Tests
   console.log('--- 1. Optimization Decision Boundary Tests (Rule: NO compression if <= 5MB) ---');
@@ -119,7 +272,7 @@ async function runImageOptimizationTests() {
     body: JSON.stringify({ email: 'test123@gmail.com', password: 'test123' }),
   });
   const loginData = await loginRes.json();
-  const adminToken = loginData.accessToken;
+  adminToken = loginData.accessToken;
   assert(loginRes.status === 200 && !!adminToken, 'Admin authenticated and JWT acquired');
 
   // Test unauthenticated upload blocked
@@ -143,6 +296,7 @@ async function runImageOptimizationTests() {
     body: fd500K,
   });
   const data500K = await res500K.json();
+  if (data500K?.url) pendingUploads.add(data500K.url);
   assert(res500K.status === 200 && data500K.success && !!data500K.url, `Upload 500 KB original image: PASS (URL: ${data500K.url?.slice(0, 45)}...)`);
 
   // 4.2 Test direct upload of 2 MB JPEG (no compression needed)
@@ -156,6 +310,7 @@ async function runImageOptimizationTests() {
     body: fd2MB,
   });
   const data2MB = await res2MB.json();
+  if (data2MB?.url) pendingUploads.add(data2MB.url);
   assert(res2MB.status === 200 && data2MB.success, 'Upload 2 MB original image: PASS (Unchanged quality)');
 
   // 4.3 Test direct upload of 4.8 MB JPEG (no compression needed)
@@ -169,6 +324,7 @@ async function runImageOptimizationTests() {
     body: fd4_8MB,
   });
   const data4_8MB = await res4_8MB.json();
+  if (data4_8MB?.url) pendingUploads.add(data4_8MB.url);
   assert(res4_8MB.status === 200 && data4_8MB.success, 'Upload 4.8 MB original image: PASS (Unchanged quality)');
 
   // 4.4 Test direct unoptimized 5.1 MB JPEG -> MUST be rejected by backend 5MB ceiling
@@ -197,6 +353,7 @@ async function runImageOptimizationTests() {
     body: fd5_1MB_Opt,
   });
   const data5_1MB_Opt = await res5_1MB_Opt.json();
+  if (data5_1MB_Opt?.url) pendingUploads.add(data5_1MB_Opt.url);
   assert(
     res5_1MB_Opt.status === 200 && data5_1MB_Opt.success,
     `Optimized 5.1MB image (5.1MB -> 2.2MB WebP): Upload PASS (Status: 200)`
@@ -213,6 +370,7 @@ async function runImageOptimizationTests() {
     body: fd7_9MB_Opt,
   });
   const data7_9MB_Opt = await res7_9MB_Opt.json();
+  if (data7_9MB_Opt?.url) pendingUploads.add(data7_9MB_Opt.url);
   assert(
     res7_9MB_Opt.status === 200 && data7_9MB_Opt.success,
     `Optimized 7.9MB image (7.9MB -> 3.1MB WebP): Upload PASS (Status: 200)`
@@ -290,6 +448,11 @@ async function runImageOptimizationTests() {
     }),
   });
   const createdProd = await createProdRes.json();
+  if (createProdRes.status === 201 && createdProd?._id) {
+    createdProductId = createdProd._id;
+    activeProductImage = uploadedImageUrl;
+    if (uploadedImageUrl) pendingUploads.delete(uploadedImageUrl);
+  }
   assert(
     createProdRes.status === 201 && createdProd._id && createdProd.image === uploadedImageUrl,
     `Admin Create Product with optimized image: PASS (ID: ${createdProd._id})`
@@ -309,18 +472,19 @@ async function runImageOptimizationTests() {
     }),
   });
   const updatedProd = await updateProdRes.json();
+  if (updateProdRes.status === 200) {
+    activeProductImage = newUploadedImageUrl;
+    if (newUploadedImageUrl) pendingUploads.delete(newUploadedImageUrl);
+  }
   assert(
     updateProdRes.status === 200 && updatedProd.image === newUploadedImageUrl,
     'Admin Edit Product (Replace Image): PASS (Image replaced successfully)'
   );
-
-
-  // Cleanup test product
-  await fetch(`${BASE_URL}/api/products/${createdProd._id}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${adminToken}` },
-  });
-  console.log('✅ Cleanup: Test product removed');
+  } finally {
+    process.removeListener('SIGINT', signalHandler);
+    process.removeListener('SIGTERM', signalHandler);
+    await performCleanup('FINALLY');
+  }
 
   console.log('\n======================================================');
   console.log(`Image Optimization Tests Complete: ${passed} PASSED, ${failed} FAILED`);

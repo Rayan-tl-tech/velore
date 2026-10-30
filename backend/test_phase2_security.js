@@ -2,6 +2,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Strict Safety Guard 1: Must run exclusively in 'test' environment
+if (process.env.NODE_ENV !== 'test') {
+  console.error(`⛔ FATAL: Cannot run Phase 2 security test suite outside of test environment! Strictly requires NODE_ENV='test'. Current: '${process.env.NODE_ENV || 'undefined'}'.`);
+  process.exit(1);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -9,6 +15,31 @@ const BASE_URL = 'http://localhost:5000';
 
 async function runPhase2Tests() {
   console.log('🛡️  Starting VÉLOR Phase 2 Security Hardening Test Suite...\n');
+
+  // Strict Safety Guard 2: Verify backend API is actively running on 'velor_test'
+  let healthData;
+  try {
+    const healthRes = await fetch(`${BASE_URL}/api/health`);
+    if (!healthRes.ok) {
+      console.error(`⛔ SAFETY ABORT: Backend health check failed with HTTP ${healthRes.status}.`);
+      process.exit(1);
+    }
+    healthData = await healthRes.json();
+  } catch (err) {
+    console.error(`⛔ SAFETY ABORT: Cannot connect to backend server at ${BASE_URL}/api/health (${err.message}). Ensure backend is started with NODE_ENV=test.`);
+    process.exit(1);
+  }
+
+  const FORBIDDEN_DATABASES = ['velor', 'velor_dev', 'velor_prod', 'production', 'ecommerce', 'testdb'];
+  if (healthData.env !== 'test' || healthData.database !== 'velor_test') {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Backend is running in env '${healthData.env}' on database '${healthData.database}'. Phase 2 tests are STRICTLY prohibited on databases other than 'velor_test'!`);
+    process.exit(1);
+  }
+  if (FORBIDDEN_DATABASES.includes(healthData.database)) {
+    console.error(`⛔ CRITICAL SAFETY ABORT: Forbidden target database detected: '${healthData.database}'. Immediate shutdown.`);
+    process.exit(1);
+  }
+  console.log(`🔒 Isolation Verified: Backend confirmed running in test mode on database '${healthData.database}'.\n`);
 
   // Track overall stats
   const results = {

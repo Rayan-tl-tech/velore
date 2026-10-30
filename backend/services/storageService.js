@@ -47,8 +47,11 @@ export const uploadImage = async (file, req = null) => {
   // 1. Cloudinary upload if configured
   if (isCloudinaryConfigured()) {
     try {
+      // Isolate test uploads from production / development catalogs
+      const folder = process.env.NODE_ENV === 'test' ? 'velor/test/products' : 'velor/products';
+
       const result = await cloudinary.uploader.upload(file.path, {
-        folder: 'velor/products',
+        folder,
         resource_type: 'image',
         transformation: [
           { quality: 'auto' },
@@ -92,38 +95,72 @@ export const uploadImage = async (file, req = null) => {
 
 /**
  * Safely delete an image from storage (Cloudinary or local disk).
- * Will not throw fatal errors if image is already gone.
+ * Returns true if deletion is confirmed, false if deletion failed or could not be confirmed.
  *
  * @param {string} imageUrlOrPublicId
+ * @returns {Promise<boolean>}
  */
 export const deleteImage = async (imageUrlOrPublicId) => {
-  if (!imageUrlOrPublicId || typeof imageUrlOrPublicId !== 'string') return;
+  if (!imageUrlOrPublicId || typeof imageUrlOrPublicId !== 'string') {
+    return false;
+  }
 
   const target = imageUrlOrPublicId.trim();
+  if (!target) {
+    return false;
+  }
 
-  // Cloudinary image
+  // 1. Cloudinary image
   if (isCloudinaryConfigured() && target.includes('cloudinary.com')) {
     try {
       // Extract public_id from URL: e.g. .../upload/v12345/velor/products/abc.jpg -> velor/products/abc
       const match = target.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-zA-Z0-9]+)?$/);
       const publicId = match ? match[1] : target;
-      await cloudinary.uploader.destroy(publicId);
-      return;
+      const res = await cloudinary.uploader.destroy(publicId);
+
+      // Verify explicit confirmation from Cloudinary API
+      if (res && res.result === 'ok') {
+        return true;
+      }
+
+      console.warn(`Cloudinary deletion not confirmed for '${publicId}': result='${res?.result || 'unknown'}'`);
+      return false;
     } catch (err) {
       console.warn('Failed to delete image from Cloudinary:', err.message);
+      return false;
     }
   }
 
-  // Local storage image
-  if (target.includes('/uploads/')) {
+  // 2. Local storage image
+  if (
+    target.includes('/uploads/') ||
+    target.includes('\\uploads\\') ||
+    (!target.includes('/') && !target.includes('\\') && fs.existsSync(path.join(uploadsDir, target)))
+  ) {
     try {
       const filename = path.basename(target);
       const filePath = path.join(uploadsDir, filename);
-      if (fs.existsSync(filePath)) {
-        await fs.promises.unlink(filePath);
+
+      // Check if file exists prior to deletion attempt
+      if (!fs.existsSync(filePath)) {
+        console.warn(`Local image file already inexistent: '${filePath}'`);
+        return false;
       }
+
+      await fs.promises.unlink(filePath);
+
+      // Verify that file genuinely no longer exists on disk
+      if (!fs.existsSync(filePath)) {
+        return true;
+      }
+
+      console.error(`Local image file still exists after deletion attempt: '${filePath}'`);
+      return false;
     } catch (err) {
       console.warn('Failed to delete local upload file:', err.message);
+      return false;
     }
   }
+
+  return false;
 };
