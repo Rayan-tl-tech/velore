@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "test:api": "node -e \"process.env.NODE_ENV='test'; import('./test_suite.js')\"",
+    "test:api": "node -e \"process.env.NODE_ENV='test'; import('./test_api_preflight.js')\"",
     "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js')\"",
     "test:regression": "node -e \"process.env.NODE_ENV='test'; import('./test_regression.js')\"",
     "test:phase4": "node -e \"process.env.NODE_ENV='test'; import('./test_phase4_audit.js')\"",
