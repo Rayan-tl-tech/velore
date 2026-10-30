@@ -1,4 +1,3 @@
-import mongoose from 'mongoose';
 import Cart from '../models/cartModel.js';
 import Product from '../models/productModel.js';
 import { isValidObjectId } from '../middlewares/validateObjectId.js';
@@ -48,22 +47,8 @@ const matchesItem = (item, productId, size) => {
 export const addToCart = async (userId, productId, quantity = 1, size = 'M', productName = '') => {
   validateUserId(userId);
 
-  let targetId = productId;
-  if (!targetId || !mongoose.Types.ObjectId.isValid(targetId)) {
-    // If not a valid ObjectId, try finding the product by name if supplied
-    let found = null;
-    if (productName) {
-      found = await Product.findOne({ name: new RegExp(`^${productName.trim()}$`, 'i') });
-    }
-    if (!found && typeof productId === 'string' && productId.length > 2) {
-      found = await Product.findOne({ name: new RegExp(productId, 'i') });
-    }
-    if (found) {
-      targetId = found._id;
-    } else {
-      validateProductId(targetId);
-    }
-  }
+  validateProductId(productId);
+  const targetId = productId;
 
   const qty = validateQuantity(quantity);
   const cleanSize = String(size || 'M').trim();
