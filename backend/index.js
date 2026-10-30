@@ -91,8 +91,11 @@ app.use(
   })
 );
 
-// SEC-06: Configurable CORS Whitelist (Removes wildcard '*')
-const defaultAllowedOrigins = [
+// SEC-06: Environment-aware CORS Whitelist (Hardened for Production)
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Development & test origins needed for local UI and automated test runners
+const localAllowedOrigins = [
   'http://localhost:5173',
   'https://localhost:5173',
   'http://127.0.0.1:5173',
@@ -103,20 +106,48 @@ const defaultAllowedOrigins = [
   'https://127.0.0.1:3000',
 ];
 
-const envFrontendUrl = process.env.FRONTEND_URL?.trim().replace(/\/+$/, '');
-const allowedOrigins = [
-  ...defaultAllowedOrigins,
-  ...(envFrontendUrl ? [envFrontendUrl] : [])
-];
+// Robust loopback / localhost detection using WHATWG URL parser
+const isLocalhostOrigin = (origin) => {
+  if (!origin || typeof origin !== 'string') return false;
+  try {
+    const url = new URL(origin);
+    let host = url.hostname.toLowerCase().replace(/\.+$/, '');
+    if (host.startsWith('[') && host.endsWith(']')) {
+      host = host.slice(1, -1);
+    }
+    if (host === 'localhost' || host.endsWith('.localhost')) return true;
+    if (host === '127.0.0.1' || host.startsWith('127.') || host === '0.0.0.0') return true;
+    if (host === '::1' || host === '::' || host === '0:0:0:0:0:0:0:1') return true;
+    return false;
+  } catch {
+    return /^https?:\/\/(localhost\.?|127\.\d+\.\d+\.\d+|\[::1\]|\[0:0:0:0:0:0:0:1\])(:\d+)?$/i.test(origin);
+  }
+};
+
+const configuredOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((url) => url.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
+// In production: only explicitly configured production URLs, strictly rejecting all localhost/loopback forms
+// In development/test: allow local origins plus any configured frontend URL
+const allowedOrigins = isProduction
+  ? configuredOrigins.filter((origin) => !isLocalhostOrigin(origin))
+  : [...localAllowedOrigins, ...configuredOrigins];
 
 const isDevOrigin = (origin) => {
-  if (process.env.NODE_ENV === 'production') return false;
-  return /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
+  if (isProduction) return false;
+  if (isLocalhostOrigin(origin)) return true;
+  return /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
 };
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const isAllowed = !origin || allowedOrigins.includes(origin) || isDevOrigin(origin);
+  const isAllowed = !origin || (
+    isProduction
+      ? allowedOrigins.includes(origin) && !isLocalhostOrigin(origin)
+      : allowedOrigins.includes(origin) || isDevOrigin(origin)
+  );
 
   if (origin && isAllowed) {
     res.header('Access-Control-Allow-Origin', origin);
