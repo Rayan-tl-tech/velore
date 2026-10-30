@@ -55,6 +55,11 @@ import uploadRoute from './routes/uploadRoute.js';
 
 const app = express();
 
+// SEC-15: Trust first-hop reverse proxy (Render edge) in production to ensure accurate client IP resolution for rate limiting
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Database connection
 connectDB();
 
