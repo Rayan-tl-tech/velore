@@ -306,8 +306,8 @@ export default function Orders() {
                 </h4>
                 <div className="border border-[#E8E8E8] divide-y divide-[#E8E8E8]">
                   {(selectedOrder.items || []).map((it, idx) => {
-                    const prodName = typeof it.product === 'object' ? it.product?.name : 'VÉLOR Collection Item';
-                    const prodImg = typeof it.product === 'object' ? it.product?.image : null;
+                    const prodName = it.name || (typeof it.product === 'object' ? it.product?.name : null) || 'VÉLOR Collection Item';
+                    const prodImg = it.image || (typeof it.product === 'object' ? it.product?.image : null);
                     return (
                       <div key={idx} className="p-3 flex items-center justify-between text-sm">
                         <div className="flex items-center gap-3">

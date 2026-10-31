@@ -250,18 +250,21 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
                     <div className="py-3 divide-y divide-[#E8E8E8]">
                       {order.items?.map((item, i) => {
                         const product = item.product || {};
+                        const itemName = item.name || product.name || 'Piece';
+                        const rawImage = item.image || product.image;
+                        const itemImage = rawImage ? getImageUrl(rawImage) : DEFAULT_PRODUCT_IMAGE;
                         return (
                           <div key={i} className="py-2.5 flex items-center justify-between gap-4 first:pt-0 last:pb-0">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-13 bg-[#E8E8E8] overflow-hidden shrink-0">
                                 <img
-                                  src={product.image ? getImageUrl(product.image) : DEFAULT_PRODUCT_IMAGE}
-                                  alt={product.name || 'VÉLOR'}
+                                  src={itemImage}
+                                  alt={itemName}
                                   className="w-full h-full object-cover"
                                 />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-[#0A0A0A]">{product.name || 'Piece'}</p>
+                                <p className="text-xs font-medium text-[#0A0A0A]">{itemName}</p>
                                 <p className="text-[10px] text-[#777]">
                                   Qty: {item.quantity} {item.size ? `· Size ${item.size}` : ''}
                                 </p>
