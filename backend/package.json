@@ -8,6 +8,7 @@
     "dev": "nodemon index.js",
     "test:api": "node -e \"process.env.NODE_ENV='test'; import('./test_api_preflight.js')\"",
     "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js')\"",
+    "test:phase1a": "node -e \"process.env.NODE_ENV='test'; import('./test_phase1a_order_stock.js')\"",
     "test:regression": "node -e \"process.env.NODE_ENV='test'; import('./test_regression.js')\"",
     "test:phase4": "node -e \"process.env.NODE_ENV='test'; import('./test_phase4_audit.js')\"",
     "test:phase3": "node -e \"process.env.NODE_ENV='test'; import('./test_phase3_auth_security.js')\"",
