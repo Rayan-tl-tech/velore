@@ -64,11 +64,14 @@ export default function ProductCard({ product, index = 0, onProductClick, onShow
         <img
           src={product.image}
           alt={product.name}
+          width={800}
+          height={1000}
+          loading="lazy"
+          decoding="async"
           onLoad={() => setImageLoaded(true)}
           className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 transition-opacity duration-300 ${
             imageLoaded ? 'opacity-100' : 'opacity-0'
           }`}
-          loading="lazy"
           onError={(e) => {
             e.currentTarget.src = 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&h=1000&fit=crop';
             setImageLoaded(true);

@@ -102,7 +102,10 @@ export default function CategoryCards({ categories: externalCategories, products
                 <img
                   src={image}
                   alt={`${catName} collection`}
+                  width={800}
+                  height={1000}
                   loading="lazy"
+                  decoding="async"
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   onError={(e) => {
                     e.target.src = defaultFallback;

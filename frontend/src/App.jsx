@@ -203,7 +203,7 @@ function MainLayout() {
         onOrderPlaced={handleOrderPlaced}
       />
 
-      {/* Secondary Customer Modals (Lazy Loaded) */}
+      {/* Secondary Customer Modals (On-demand Lazy Loaded) */}
       <Suspense fallback={null}>
         {selectedProduct && (
           <ProductDetailModal
@@ -213,25 +213,31 @@ function MainLayout() {
           />
         )}
 
-        <OrdersModal
-          isOpen={ordersModalOpen}
-          onClose={() => setOrdersModalOpen(false)}
-        />
+        {ordersModalOpen && (
+          <OrdersModal
+            isOpen={ordersModalOpen}
+            onClose={() => setOrdersModalOpen(false)}
+          />
+        )}
 
-        <FavoritesModal
-          isOpen={isFavoritesOpen}
-          onClose={closeFavorites}
-          onProductClick={(p) => setSelectedProduct(p)}
-          onShowToast={showToast}
-        />
+        {isFavoritesOpen && (
+          <FavoritesModal
+            isOpen={isFavoritesOpen}
+            onClose={closeFavorites}
+            onProductClick={(p) => setSelectedProduct(p)}
+            onShowToast={showToast}
+          />
+        )}
 
-        <ProfileModal
-          isOpen={profileModalOpen}
-          onClose={() => setProfileModalOpen(false)}
-          onShowToast={showToast}
-          onOpenFavorites={handleOpenFavorites}
-          onOpenOrders={handleOpenOrders}
-        />
+        {profileModalOpen && (
+          <ProfileModal
+            isOpen={profileModalOpen}
+            onClose={() => setProfileModalOpen(false)}
+            onShowToast={showToast}
+            onOpenFavorites={handleOpenFavorites}
+            onOpenOrders={handleOpenOrders}
+          />
+        )}
 
         {isAuthModalOpen && (
           <AuthModal
