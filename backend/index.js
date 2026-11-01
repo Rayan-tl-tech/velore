@@ -63,35 +63,7 @@ if (process.env.NODE_ENV === 'production') {
 // Database connection
 connectDB();
 
-// SEC-11: Security Headers via Helmet (configured for React & external assets)
-app.use(
-  helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://placehold.co", "https://res.cloudinary.com"],
-        connectSrc: [
-          "'self'",
-          process.env.FRONTEND_URL,
-          'http://localhost:5173',
-          'http://127.0.0.1:5173',
-          'http://localhost:3000',
-          'https://final-project-backend-5htz.onrender.com'
-        ].filter(Boolean),
-        objectSrc: ["'none'"],
-        frameAncestors: ["'self'"],
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows frontend to render uploaded assets
-    hsts: process.env.NODE_ENV === 'production' ? { maxAge: 31536000, includeSubDomains: true } : false,
-  })
-);
-
-// SEC-06: Environment-aware CORS Whitelist (Hardened for Production)
+// SEC-06: Environment-aware Origin Resolution (Hardened for Production)
 const isProduction = process.env.NODE_ENV === 'production';
 
 // Development & test origins needed for local UI and automated test runners
@@ -140,6 +112,27 @@ const isDevOrigin = (origin) => {
   if (isLocalhostOrigin(origin)) return true;
   return /^https?:\/\/(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+)(:\d+)?$/.test(origin);
 };
+
+// SEC-11: Security Headers via Helmet (configured for React & external assets)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "blob:", "https://images.unsplash.com", "https://placehold.co", "https://res.cloudinary.com"],
+        connectSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows frontend to render uploaded assets
+    hsts: isProduction ? { maxAge: 31536000, includeSubDomains: true } : false,
+  })
+);
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
