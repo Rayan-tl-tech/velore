@@ -74,9 +74,10 @@ const connectDB = async () => {
     }
 
     console.log(`✅ Connected to MongoDB Atlas (environment: ${currentEnv}, database: ${activeDb})`);
+    return mongoose.connection;
   } catch (error) {
     console.error('❌ Error connecting to MongoDB:', error.message || error);
-    process.exit(1);
+    throw error;
   }
 };
 

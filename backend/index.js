@@ -61,7 +61,7 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Database connection
-connectDB();
+// (deferred to startServer() below)
 
 // SEC-06: Environment-aware Origin Resolution (Hardened for Production)
 const isProduction = process.env.NODE_ENV === 'production';
@@ -328,8 +328,144 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 5000;
+const SHUTDOWN_TIMEOUT_MS = 20000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-});
+let server = null;
+let isShuttingDown = false;
 
+/**
+ * Handles graceful shutdown of HTTP server and MongoDB connections.
+ * Enforces single-execution locking and a 20s safety watchdog.
+ *
+ * @param {string} signal - The triggering POSIX signal (SIGTERM, SIGINT)
+ */
+export async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    console.log(`⚠️ Shutdown already in progress. Ignoring additional signal: ${signal}`);
+    return;
+  }
+  isShuttingDown = true;
+  console.log(`\n🛑 Received ${signal}. Initiating graceful shutdown...`);
+
+  // Phase 4: 20-second safety watchdog timer to prevent indefinite hanging
+  const forceExitTimer = setTimeout(() => {
+    console.error(`⚠️ Graceful shutdown timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s. Forcing exit.`);
+    process.exitCode = 1;
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+  forceExitTimer.unref();
+
+  try {
+    // Phase 2: Close HTTP server (stop accepting new connections, drain in-flight)
+    if (server && server.listening) {
+      console.log('⏳ Closing HTTP server and draining active requests...');
+      await new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+
+        if (typeof server.closeIdleConnections === 'function') {
+          server.closeIdleConnections();
+        }
+      });
+      console.log('✅ HTTP server closed successfully.');
+    }
+
+    // Phase 2: Close MongoDB connection cleanly
+    if (mongoose.connection.readyState !== 0) {
+      console.log('⏳ Closing MongoDB connection...');
+      await mongoose.connection.close(false);
+      console.log('✅ MongoDB connection closed successfully.');
+    }
+
+    clearTimeout(forceExitTimer);
+    console.log('👋 Graceful shutdown completed cleanly.');
+    process.exitCode = 0;
+  } catch (error) {
+    clearTimeout(forceExitTimer);
+    console.error('❌ Error during graceful shutdown:', error.message || error);
+    process.exitCode = 1;
+    process.exit(1);
+  }
+}
+
+/**
+ * Starts the application server with strict lifecycle ordering:
+ * 1. Awaits and verifies MongoDB connection.
+ * 2. Starts HTTP listener.
+ * 3. Registers SIGTERM and SIGINT signal handlers.
+ */
+export async function startServer() {
+  try {
+    // Phase 1: Initialize and verify database connection before opening port
+    console.log('⏳ Initializing database connection...');
+    await connectDB();
+    if (mongoose.connection.readyState !== 1) {
+      throw new Error(`MongoDB connection verification failed: readyState is ${mongoose.connection.readyState} (expected 1)`);
+    }
+
+    // Phase 1: Start HTTP server and capture instance with clean listener lifecycle
+    await new Promise((resolve, reject) => {
+      const listeningServer = app.listen(process.env.PORT || PORT || 5000);
+
+      const onListening = () => {
+        cleanup();
+        server = listeningServer;
+        console.log(`🚀 Server running on port ${process.env.PORT || PORT || 5000}`);
+        resolve(server);
+      };
+
+      const onError = (err) => {
+        cleanup();
+        reject(err);
+      };
+
+      const cleanup = () => {
+        listeningServer.removeListener('listening', onListening);
+        listeningServer.removeListener('error', onError);
+      };
+
+      listeningServer.once('listening', onListening);
+      listeningServer.once('error', onError);
+    });
+
+    // Phase 3: Register signal handlers
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+    return server;
+  } catch (error) {
+    console.error('❌ Fatal error during server startup:', error.message || error);
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
+      try {
+        await mongoose.connection.close(false);
+        console.log('✅ MongoDB connection closed after startup failure.');
+      } catch (dbErr) {
+        console.error('❌ Error closing MongoDB after startup failure:', dbErr.message || dbErr);
+      }
+    }
+    process.exitCode = 1;
+    process.exit(1);
+  }
+}
+
+export const isMainModule = () => {
+  if (!process.argv[1]) return false;
+  try {
+    const currentFilePath = fileURLToPath(import.meta.url);
+    const invokedPath = path.resolve(process.argv[1]);
+    return process.platform === 'win32'
+      ? currentFilePath.toLowerCase() === invokedPath.toLowerCase()
+      : currentFilePath === invokedPath;
+  } catch {
+    return false;
+  }
+};
+
+if (isMainModule()) {
+  await startServer();
+}
+
+export { app, server };
+export default app;

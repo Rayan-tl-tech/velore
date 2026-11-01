@@ -7,7 +7,7 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test:api": "node -e \"process.env.NODE_ENV='test'; import('./test_api_preflight.js')\"",
-    "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js')\"",
+    "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js').then(m => m.startServer())\"",
     "test:phase1a": "node -e \"process.env.NODE_ENV='test'; import('./test_phase1a_order_stock.js')\"",
     "test:regression": "node -e \"process.env.NODE_ENV='test'; import('./test_regression.js')\"",
     "test:phase4": "node -e \"process.env.NODE_ENV='test'; import('./test_phase4_audit.js')\"",
