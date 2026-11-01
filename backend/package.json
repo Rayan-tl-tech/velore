@@ -12,6 +12,7 @@
     "test:timeouts": "node -e \"process.env.NODE_ENV='test'; import('./test_http_timeouts.js')\"",
     "test:ratelimit": "node -e \"process.env.NODE_ENV='test'; import('./test_rate_limit.js')\"",
     "test:frontend-url": "node -e \"process.env.NODE_ENV='test'; import('./test_frontend_url.js')\"",
+    "test:health": "node -e \"process.env.NODE_ENV='test'; import('./test_health_checks.js')\"",
     "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js').then(m => m.startServer())\"",
     "test:phase1a": "node -e \"process.env.NODE_ENV='test'; import('./test_phase1a_order_stock.js')\"",
     "test:regression": "node -e \"process.env.NODE_ENV='test'; import('./test_regression.js')\"",

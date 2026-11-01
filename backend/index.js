@@ -267,12 +267,24 @@ const globalApiLimiter = rateLimit({
     // Exempt CORS preflight requests
     if (req.method === 'OPTIONS') return true;
 
-    // Exempt health check endpoints
+    // Exempt health, liveness, and readiness endpoints
     const path = req.path || '';
-    if (path === '/health' || path.startsWith('/health/')) return true;
+    if (
+      path === '/health' || path.startsWith('/health/') ||
+      path === '/live' || path.startsWith('/live/') ||
+      path === '/ready' || path.startsWith('/ready/')
+    ) {
+      return true;
+    }
 
     const originalUrl = (req.originalUrl || '').split('?')[0];
-    if (originalUrl === '/api/health' || originalUrl.startsWith('/api/health/')) return true;
+    if (
+      originalUrl === '/api/health' || originalUrl.startsWith('/api/health/') ||
+      originalUrl === '/api/live' || originalUrl.startsWith('/api/live/') ||
+      originalUrl === '/api/ready' || originalUrl.startsWith('/api/ready/')
+    ) {
+      return true;
+    }
 
     return false;
   },
@@ -280,6 +292,36 @@ const globalApiLimiter = rateLimit({
     error: 'Too many requests from this IP. Please wait a moment before trying again.',
     success: false,
   },
+});
+
+// STEP 9.3.4E: Dedicated Liveness Endpoint
+// Proves that the Node.js process and HTTP event loop are alive, independent of database state.
+app.get(['/api/live', '/api/health/live'], (_req, res) => {
+  res.status(200).json({
+    status: 'live',
+    uptime: Math.floor(process.uptime()),
+    timestamp: Date.now(),
+  });
+});
+
+// STEP 9.3.4E: Dedicated Readiness Endpoint
+// Proves that the server is ready to accept user traffic (HTTP server alive AND MongoDB connected).
+app.get(['/api/ready', '/api/health/ready'], (_req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isConnected) {
+    return res.status(200).json({
+      status: 'ready',
+      database: isProd ? 'connected' : (mongoose.connection.name || 'connected'),
+    });
+  }
+
+  return res.status(503).json({
+    status: 'unavailable',
+    database: 'disconnected',
+    message: 'Database connection is not ready to serve traffic.',
+  });
 });
 
 // Safe health & environment diagnostic endpoint for test isolation verification
