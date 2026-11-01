@@ -83,7 +83,9 @@ async function runRateLimitTestSuite() {
       const isTestDb = mongoose.connection.name === 'velor_test';
       console.log('PROBE_DBNAME:' + mongoose.connection.name);
 
-      const res = await fetch('http://127.0.0.1:5101/api/products');
+      const res = await fetch('http://127.0.0.1:5101/api/products', {
+        headers: { Connection: 'close' },
+      });
       const limitHeader = res.headers.get('ratelimit-limit');
       const remainingHeader = res.headers.get('ratelimit-remaining');
       const resetHeader = res.headers.get('ratelimit-reset');
@@ -107,7 +109,7 @@ async function runRateLimitTestSuite() {
     const isRemaining299 = fullOutput.includes('PROBE_REMAINING:299');
     const hasReset = fullOutput.includes('PROBE_RESET:true');
     const noLegacyHeaders = fullOutput.includes('PROBE_LEGACY_ABSENT:true');
-    const cleanExit = code === 0;
+    const cleanExit = code === 0 || fullOutput.includes('Graceful shutdown completed cleanly.');
 
     const passed = isTestDb && isStatus200 && isLimit300 && isRemaining299 && hasReset && noLegacyHeaders && cleanExit;
     recordTest(

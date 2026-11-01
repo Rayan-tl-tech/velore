@@ -96,6 +96,42 @@ const isLocalhostOrigin = (origin) => {
   }
 };
 
+// STEP 9.3.4D: Production FRONTEND_URL validator
+const validateFrontendUrl = (rawUrl, isProd = process.env.NODE_ENV === 'production') => {
+  if (!isProd) return { valid: true };
+  if (!rawUrl || typeof rawUrl !== 'string' || rawUrl.trim() === '') {
+    return { valid: false, error: 'FRONTEND_URL environment variable is missing in production mode.' };
+  }
+  const origins = rawUrl.split(',').map((u) => u.trim().replace(/\/+$/, '')).filter(Boolean);
+  if (origins.length === 0) {
+    return { valid: false, error: 'FRONTEND_URL must contain at least one valid URL in production mode.' };
+  }
+  for (const origin of origins) {
+    let parsed;
+    try {
+      parsed = new URL(origin);
+    } catch {
+      return { valid: false, error: 'FRONTEND_URL origin "' + origin + '" is not a valid absolute URL.' };
+    }
+    if (parsed.protocol !== 'https:') {
+      return { valid: false, error: 'Insecure FRONTEND_URL "' + origin + '". Production frontend URL must use HTTPS.' };
+    }
+    if (isLocalhostOrigin(origin)) {
+      return { valid: false, error: 'FRONTEND_URL "' + origin + '" points to localhost/loopback, which is prohibited in production.' };
+    }
+  }
+  return { valid: true, origins };
+};
+
+// STEP 9.3.4D: Fail fast on startup in production if FRONTEND_URL is missing or invalid
+if (isProduction) {
+  const frontendCheck = validateFrontendUrl(process.env.FRONTEND_URL, true);
+  if (!frontendCheck.valid) {
+    console.error('FATAL: ' + frontendCheck.error);
+    process.exit(1);
+  }
+}
+
 const configuredOrigins = (process.env.FRONTEND_URL || '')
   .split(',')
   .map((url) => url.trim().replace(/\/+$/, ''))
@@ -626,5 +662,5 @@ if (isMainModule()) {
   await startServer();
 }
 
-export { app, server, globalApiLimiter };
+export { app, server, globalApiLimiter, isLocalhostOrigin, validateFrontendUrl };
 export default app;
