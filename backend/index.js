@@ -335,59 +335,114 @@ const SHUTDOWN_TIMEOUT_MS = Number.isFinite(parsedShutdownTimeout) && parsedShut
 
 let server = null;
 let isShuttingDown = false;
+let finalExitCode = 0;
 
 /**
  * Handles graceful shutdown of HTTP server and MongoDB connections.
- * Enforces single-execution locking and a 20s safety watchdog.
+ * Enforces single-execution locking, one-way exit code escalation,
+ * independent sequential resource cleanup, and a safety watchdog.
  *
- * @param {string} signal - The triggering POSIX signal (SIGTERM, SIGINT)
+ * @param {string} signal - The triggering POSIX signal or error event
+ * @param {number} [targetExitCode=0] - Requested exit code (0 for signals, 1 for fatal errors)
  */
-export async function gracefulShutdown(signal) {
+export async function gracefulShutdown(signal, targetExitCode = 0) {
   if (isShuttingDown) {
+    // Situation A: A normal shutdown (SIGTERM/SIGINT) was in progress (finalExitCode === 0)
+    // and a fatal error occurs (targetExitCode !== 0). We must escalate and force exit 1 immediately.
+    if (finalExitCode === 0 && targetExitCode !== 0) {
+      finalExitCode = targetExitCode;
+      console.error(`💥 Fatal error occurred during active normal shutdown (${signal}). Forcing immediate exit with code 1.`);
+      process.exitCode = 1;
+      process.exit(1);
+    }
+
+    // Situation B: A fatal shutdown was already in progress (finalExitCode !== 0), or another normal signal arrives.
+    // Preserve the fatal exit code, do NOT interrupt the ongoing cleanup, do NOT start a duplicate cleanup.
+    if (targetExitCode !== 0) {
+      finalExitCode = targetExitCode;
+    }
     console.log(`⚠️ Shutdown already in progress. Ignoring additional signal: ${signal}`);
     return;
   }
+
+  // First shutdown event
   isShuttingDown = true;
+  if (targetExitCode !== 0) {
+    finalExitCode = targetExitCode;
+  }
   console.log(`\n🛑 Received ${signal}. Initiating graceful shutdown...`);
 
-  // Phase 4: 20-second safety watchdog timer to prevent indefinite hanging
+  // Safety watchdog timer to prevent indefinite hanging (uses shorter timeout for fatal errors if configured)
+  const timeoutMs = targetExitCode !== 0
+    ? Math.min(SHUTDOWN_TIMEOUT_MS, Number(process.env.FATAL_SHUTDOWN_TIMEOUT_MS) || 5000)
+    : SHUTDOWN_TIMEOUT_MS;
+
   const forceExitTimer = setTimeout(() => {
-    console.error(`⚠️ Graceful shutdown timed out after ${SHUTDOWN_TIMEOUT_MS / 1000}s. Forcing exit.`);
+    console.error(`⚠️ Graceful shutdown timed out after ${timeoutMs / 1000}s. Forcing exit.`);
     process.exitCode = 1;
     process.exit(1);
-  }, SHUTDOWN_TIMEOUT_MS);
+  }, timeoutMs);
   forceExitTimer.unref();
+
+  let cleanupFailure = false;
 
   try {
     // Phase 2: Close HTTP server (stop accepting new connections, drain in-flight)
     if (server && server.listening) {
-      console.log('⏳ Closing HTTP server and draining active requests...');
-      await new Promise((resolve, reject) => {
-        server.close((err) => {
-          if (err) return reject(err);
-          resolve();
+      try {
+        console.log('⏳ Closing HTTP server and draining active requests...');
+        await new Promise((resolve, reject) => {
+          server.close((err) => {
+            if (err) return reject(err);
+            resolve();
+          });
+
+          if (typeof server.closeIdleConnections === 'function') {
+            server.closeIdleConnections();
+          }
         });
-
-        if (typeof server.closeIdleConnections === 'function') {
-          server.closeIdleConnections();
-        }
-      });
-      console.log('✅ HTTP server closed successfully.');
+        console.log('✅ HTTP server closed successfully.');
+      } catch (httpError) {
+        console.error('❌ Error closing HTTP server:', httpError.message || httpError);
+        cleanupFailure = true;
+      }
     }
 
-    // Phase 2: Close MongoDB connection cleanly
-    if (mongoose.connection.readyState !== 0) {
-      console.log('⏳ Closing MongoDB connection...');
-      await mongoose.connection.close(false);
-      console.log('✅ MongoDB connection closed successfully.');
+    // Phase 2: Close MongoDB connection cleanly (attempted regardless of HTTP server closure outcome)
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
+      try {
+        console.log('⏳ Closing MongoDB connection...');
+        await mongoose.connection.close(false);
+        console.log('✅ MongoDB connection closed successfully.');
+      } catch (dbError) {
+        console.error('❌ Error closing MongoDB connection:', dbError.message || dbError);
+        cleanupFailure = true;
+      }
     }
 
     clearTimeout(forceExitTimer);
-    console.log('👋 Graceful shutdown completed cleanly.');
-    process.exitCode = 0;
-  } catch (error) {
+
+    if (cleanupFailure) {
+      console.error('❌ Graceful shutdown finished with cleanup failure(s). Forcing exit code 1.');
+      process.exitCode = 1;
+      process.exit(1);
+    } else if (finalExitCode !== 0) {
+      console.error(`🛑 Fatal graceful shutdown completed with failure code ${finalExitCode}.`);
+      process.exitCode = finalExitCode;
+      process.exit(finalExitCode);
+    } else {
+      console.log('👋 Graceful shutdown completed cleanly.');
+      process.exitCode = 0;
+      process.exit(0);
+    }
+  } catch (unexpectedError) {
     clearTimeout(forceExitTimer);
-    console.error('❌ Error during graceful shutdown:', error.message || error);
+    console.error('❌ Unexpected error during graceful shutdown:', unexpectedError.message || unexpectedError);
+    if (mongoose.connection && mongoose.connection.readyState !== 0) {
+      try {
+        await mongoose.connection.close(false);
+      } catch {}
+    }
     process.exitCode = 1;
     process.exit(1);
   }
@@ -397,7 +452,7 @@ export async function gracefulShutdown(signal) {
  * Starts the application server with strict lifecycle ordering:
  * 1. Awaits and verifies MongoDB connection.
  * 2. Starts HTTP listener.
- * 3. Registers SIGTERM and SIGINT signal handlers.
+ * 3. Registers process-level fatal error handlers and OS signal handlers.
  */
 export async function startServer() {
   try {
@@ -406,6 +461,20 @@ export async function startServer() {
     await connectDB();
     if (mongoose.connection.readyState !== 1) {
       throw new Error(`MongoDB connection verification failed: readyState is ${mongoose.connection.readyState} (expected 1)`);
+    }
+
+    // Attach diagnostic-only Mongoose connection lifecycle listeners
+    if (!mongoose.connection._hasDiagnosticListeners) {
+      mongoose.connection.on('error', (err) => {
+        console.error('⚠️ MongoDB runtime connection error:', err.message || err);
+      });
+      mongoose.connection.on('disconnected', () => {
+        console.warn('⚠️ MongoDB connection disconnected. Driver will attempt automatic reconnection.');
+      });
+      mongoose.connection.on('reconnected', () => {
+        console.log('✅ MongoDB connection re-established.');
+      });
+      mongoose.connection._hasDiagnosticListeners = true;
     }
 
     // Phase 1: Start HTTP server and capture instance with clean listener lifecycle
@@ -433,9 +502,37 @@ export async function startServer() {
       listeningServer.once('error', onError);
     });
 
+    // Phase 3: Register process-level fatal error handlers
+    process.on('unhandledRejection', (reason) => {
+      const formattedReason = reason instanceof Error
+        ? (reason.stack || reason.message)
+        : String(reason);
+      console.error(`💥 FATAL UNHANDLED REJECTION at process level:\n${formattedReason}`);
+      gracefulShutdown('unhandledRejection', 1);
+    });
+
+    process.on('uncaughtException', (error) => {
+      const formattedError = error instanceof Error
+        ? (error.stack || error.message)
+        : String(error);
+      console.error(`💥 FATAL UNCAUGHT EXCEPTION at process level:\n${formattedError}`);
+
+      // Synchronously close listening socket if open to release port immediately
+      if (server && typeof server.close === 'function') {
+        try {
+          server.close();
+        } catch {
+          // Ignore synchronous close error on corrupted state
+        }
+      }
+
+      process.exitCode = 1;
+      process.exit(1);
+    });
+
     // Phase 3: Register signal handlers
-    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM', 0));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT', 0));
 
     return server;
   } catch (error) {
@@ -452,6 +549,7 @@ export async function startServer() {
     process.exit(1);
   }
 }
+
 
 export const isMainModule = () => {
   if (!process.argv[1]) return false;
