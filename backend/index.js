@@ -328,7 +328,10 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const SHUTDOWN_TIMEOUT_MS = 20000;
+const parsedShutdownTimeout = Number(process.env.SHUTDOWN_TIMEOUT_MS);
+const SHUTDOWN_TIMEOUT_MS = Number.isFinite(parsedShutdownTimeout) && parsedShutdownTimeout > 0
+  ? parsedShutdownTimeout
+  : 20000;
 
 let server = null;
 let isShuttingDown = false;
