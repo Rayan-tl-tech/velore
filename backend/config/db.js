@@ -57,6 +57,8 @@ const connectDB = async () => {
 
     await mongoose.connect(process.env.MONGO_URI, {
       dbName: targetDb,
+      maxPoolSize: 20,
+      minPoolSize: 0,
     });
 
     const activeDb = mongoose.connection.name;

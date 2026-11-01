@@ -333,6 +333,22 @@ const SHUTDOWN_TIMEOUT_MS = Number.isFinite(parsedShutdownTimeout) && parsedShut
   ? parsedShutdownTimeout
   : 20000;
 
+// STEP 9.3.4A: HTTP server timeouts configuration for reverse proxy resilience
+const parsedKeepAliveTimeout = Number(process.env.HTTP_KEEP_ALIVE_TIMEOUT_MS);
+const HTTP_KEEP_ALIVE_TIMEOUT_MS = Number.isFinite(parsedKeepAliveTimeout) && parsedKeepAliveTimeout > 0
+  ? parsedKeepAliveTimeout
+  : 65000;
+
+const parsedHeadersTimeout = Number(process.env.HTTP_HEADERS_TIMEOUT_MS);
+const HTTP_HEADERS_TIMEOUT_MS = Number.isFinite(parsedHeadersTimeout) && parsedHeadersTimeout > 0
+  ? parsedHeadersTimeout
+  : 66000;
+
+const parsedRequestTimeout = Number(process.env.HTTP_REQUEST_TIMEOUT_MS);
+const HTTP_REQUEST_TIMEOUT_MS = Number.isFinite(parsedRequestTimeout) && parsedRequestTimeout > 0
+  ? parsedRequestTimeout
+  : 120000;
+
 let server = null;
 let isShuttingDown = false;
 let finalExitCode = 0;
@@ -391,6 +407,11 @@ export async function gracefulShutdown(signal, targetExitCode = 0) {
     if (server && server.listening) {
       try {
         console.log('⏳ Closing HTTP server and draining active requests...');
+
+        // Lower keepAliveTimeout during shutdown so in-flight requests that finish
+        // do not keep persistent connections open for 65s, allowing server.close() to finish cleanly
+        server.keepAliveTimeout = 1000;
+
         await new Promise((resolve, reject) => {
           server.close((err) => {
             if (err) return reject(err);
@@ -480,6 +501,13 @@ export async function startServer() {
     // Phase 1: Start HTTP server and capture instance with clean listener lifecycle
     await new Promise((resolve, reject) => {
       const listeningServer = app.listen(process.env.PORT || PORT || 5000);
+
+      // STEP 9.3.4A: Apply HTTP server timeouts to prevent reverse proxy 502 race conditions
+      // and protect against slow-client resource exhaustion
+      listeningServer.keepAliveTimeout = HTTP_KEEP_ALIVE_TIMEOUT_MS;
+      // headersTimeout must strictly exceed keepAliveTimeout per Node.js specifications
+      listeningServer.headersTimeout = Math.max(HTTP_HEADERS_TIMEOUT_MS, listeningServer.keepAliveTimeout + 1000);
+      listeningServer.requestTimeout = HTTP_REQUEST_TIMEOUT_MS;
 
       const onListening = () => {
         cleanup();
