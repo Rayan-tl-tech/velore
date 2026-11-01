@@ -10,6 +10,7 @@
     "test:lifecycle": "node -e \"process.env.NODE_ENV='test'; import('./test_lifecycle.js')\"",
     "test:process-errors": "node -e \"process.env.NODE_ENV='test'; import('./test_process_errors.js')\"",
     "test:timeouts": "node -e \"process.env.NODE_ENV='test'; import('./test_http_timeouts.js')\"",
+    "test:ratelimit": "node -e \"process.env.NODE_ENV='test'; import('./test_rate_limit.js')\"",
     "test:server": "node -e \"process.env.NODE_ENV='test'; import('./index.js').then(m => m.startServer())\"",
     "test:phase1a": "node -e \"process.env.NODE_ENV='test'; import('./test_phase1a_order_stock.js')\"",
     "test:regression": "node -e \"process.env.NODE_ENV='test'; import('./test_regression.js')\"",

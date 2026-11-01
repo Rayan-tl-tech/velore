@@ -219,6 +219,33 @@ const passwordResetLimiter = rateLimit({
   },
 });
 
+// STEP 9.3.4C: Global API Rate Limiter
+// Protects backend against excessive abusive polling, aggressive scraping, and high-frequency hammering.
+// In-memory store protects single-instance Node.js processes; edge/CDN filtering handles distributed DDoS.
+const globalApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: Number(process.env.GLOBAL_RATE_LIMIT_MAX) || 300, // 300 requests per 15 minutes per IP
+  standardHeaders: true, // draft-6/7 RateLimit-* headers
+  legacyHeaders: false, // disable legacy X-RateLimit-* headers
+  skip: (req) => {
+    // Exempt CORS preflight requests
+    if (req.method === 'OPTIONS') return true;
+
+    // Exempt health check endpoints
+    const path = req.path || '';
+    if (path === '/health' || path.startsWith('/health/')) return true;
+
+    const originalUrl = (req.originalUrl || '').split('?')[0];
+    if (originalUrl === '/api/health' || originalUrl.startsWith('/api/health/')) return true;
+
+    return false;
+  },
+  message: {
+    error: 'Too many requests from this IP. Please wait a moment before trying again.',
+    success: false,
+  },
+});
+
 // Safe health & environment diagnostic endpoint for test isolation verification
 app.get('/api/health', (_req, res) => {
   const isConnected = mongoose.connection.readyState === 1;
@@ -252,6 +279,9 @@ app.use(cookieParserMiddleware);
 // SEC-12: Explicit Request Body Limits
 app.use(express.json({ limit: '50kb' }));
 app.use(express.urlencoded({ extended: true, limit: '50kb' }));
+
+// STEP 9.3.4C: Apply global rate limiter across all /api routes
+app.use('/api', globalApiLimiter);
 
 // Apply rate limiters to authentication routes
 app.use('/api/auth/login', authLimiter);
@@ -596,5 +626,5 @@ if (isMainModule()) {
   await startServer();
 }
 
-export { app, server };
+export { app, server, globalApiLimiter };
 export default app;
