@@ -1,11 +1,30 @@
 import axios from 'axios';
 
-const rawBaseURL =
-  import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD ? 'https://final-project-backend-5htz.onrender.com' : undefined);
-const baseURL = rawBaseURL
-  ? (rawBaseURL.endsWith('/api') ? rawBaseURL : `${rawBaseURL.replace(/\/+$/, '')}/api`)
+const rawEnv = import.meta.env.VITE_API_URL;
+const rawBaseURL = typeof rawEnv === 'string' && rawEnv.trim() !== '' ? rawEnv.trim() : undefined;
+
+// Fail-closed alert in production if backend URL is missing
+if (import.meta.env.PROD && !rawBaseURL) {
+  console.error(
+    'CRITICAL CONFIGURATION ERROR: VITE_API_URL environment variable is missing in production build. ' +
+    'The frontend cannot connect to the backend API without a configured backend URL.'
+  );
+}
+
+const cleanURL = rawBaseURL ? rawBaseURL.replace(/\/+$/, '') : '';
+const baseURL = cleanURL
+  ? (cleanURL.endsWith('/api') ? cleanURL : `${cleanURL}/api`)
   : '/api';
+
+/**
+ * Backend host origin without /api prefix.
+ * Centralized for services and utilities (e.g. formatters) requiring the server origin.
+ */
+export const BACKEND_ORIGIN = cleanURL
+  ? cleanURL.replace(/\/api$/, '')
+  : '';
+
+export const API_BASE_URL = baseURL;
 
 // In-memory access token storage (Phase 3: NO JWT IN LOCALSTORAGE)
 let inMemoryAccessToken = null;
@@ -30,6 +49,11 @@ const apiClient = axios.create({
 // Attach in-memory access token automatically on every request
 apiClient.interceptors.request.use(
   (config) => {
+    if (import.meta.env.PROD && !rawBaseURL) {
+      return Promise.reject(
+        new Error('Configuration Error: VITE_API_URL environment variable is missing in production build.')
+      );
+    }
     if (inMemoryAccessToken) {
       config.headers.Authorization = `Bearer ${inMemoryAccessToken}`;
     }

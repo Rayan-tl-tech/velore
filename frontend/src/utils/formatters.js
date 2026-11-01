@@ -1,3 +1,5 @@
+import { BACKEND_ORIGIN } from '../services/api/apiClient';
+
 /**
  * Format a number as a price string.
  * Backend stores prices as raw numbers (e.g. 120000 = DZD or USD based on your context).
@@ -24,12 +26,8 @@ export const getImageUrl = (filename) => {
   // Already an absolute URL (external placeholder, CDN) or Data URI
   if (filename.startsWith('http') || filename.startsWith('data:')) return filename;
   const cleanPath = filename.replace(/^\/?uploads\//, '');
-  const apiUrl =
-    import.meta.env.VITE_API_URL ||
-    (import.meta.env.PROD ? 'https://final-project-backend-5htz.onrender.com' : '');
-  if (apiUrl) {
-    const base = apiUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
-    return `${base}/uploads/${cleanPath}`;
+  if (BACKEND_ORIGIN) {
+    return `${BACKEND_ORIGIN}/uploads/${cleanPath}`;
   }
   return `/uploads/${cleanPath}`;
 };
