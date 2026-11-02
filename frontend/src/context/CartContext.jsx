@@ -143,6 +143,9 @@ export function CartProvider({ children }) {
 
         if (matchIdx > -1) {
           current[matchIdx].quantity += qty;
+          if (options.color) {
+            current[matchIdx].color = options.color;
+          }
         } else {
           current.push({
             product: productObj || {
@@ -153,6 +156,7 @@ export function CartProvider({ children }) {
             },
             quantity: qty,
             size,
+            color: options.color || null,
           });
         }
         saveGuestCart(current);

@@ -119,7 +119,7 @@ export default function SignIn({ onShowToast }) {
           {errors.password && <p className="text-xs text-red-500 mt-2">{errors.password}</p>}
         </div>
 
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center pt-2">
           <label className="flex items-center gap-3 cursor-pointer">
             <input
               type="checkbox"
@@ -130,9 +130,6 @@ export default function SignIn({ onShowToast }) {
             />
             <span className="text-sm">Remember me</span>
           </label>
-          <button type="button" className="text-sm underline underline-offset-4 hover:text-[#333] transition-colors">
-            Forgot password?
-          </button>
         </div>
 
         <button

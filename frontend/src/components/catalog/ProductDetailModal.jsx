@@ -8,7 +8,13 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState(product?.sizes?.[0] || 'M');
+  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || null);
   const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    setSelectedSize(product?.sizes?.[0] || 'M');
+    setSelectedColor(product?.colors?.[0] || null);
+  }, [product]);
 
   // Animation Lifecycle: enter → visible → exit → unmount
   const [visible, setVisible] = useState(false);
@@ -64,7 +70,11 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
 
     setAdding(true);
     try {
-      await addToCart(productId, quantity, true, { size: selectedSize, product });
+      await addToCart(productId, quantity, true, {
+        size: selectedSize,
+        color: selectedColor,
+        product,
+      });
       onShowToast?.(`Added ${quantity} × "${product.name}" (Size ${selectedSize}) to your bag!`);
       handleRequestClose();
     } catch (err) {
@@ -149,14 +159,25 @@ export default function ProductDetailModal({ product, onClose, onShowToast }) {
                 <span className="text-[10px] tracking-[0.2em] uppercase text-[#666] block mb-2 font-medium">
                   Available Shades
                 </span>
-                <div className="flex items-center gap-2">
-                  {colors.map((color, idx) => (
-                    <span
-                      key={idx}
-                      className="w-4 h-4 rounded-full border border-[#CCC]"
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
+                <div className="flex items-center gap-2.5">
+                  {colors.map((color, idx) => {
+                    const isSelected = selectedColor === color;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedColor(color)}
+                        aria-label={`Select shade ${idx + 1}`}
+                        aria-pressed={isSelected}
+                        className={`w-5 h-5 rounded-full transition-all cursor-pointer ${
+                          isSelected
+                            ? 'ring-2 ring-offset-2 ring-[#0A0A0A] scale-110'
+                            : 'border border-[#CCC] hover:scale-105 opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: color }}
+                      />
+                    );
+                  })}
                 </div>
               </div>
             )}

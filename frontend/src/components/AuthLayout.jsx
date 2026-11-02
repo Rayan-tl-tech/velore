@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 export default function AuthLayout({ children, imageSrc, imageAlt }) {
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#F7F6F2]">
-      <div className="relative lg:w-1/2 lg:h-screen hidden lg:block">
+      <div className="relative lg:w-1/2 self-stretch hidden lg:block overflow-hidden">
         <img
           src={imageSrc}
           alt={imageAlt}

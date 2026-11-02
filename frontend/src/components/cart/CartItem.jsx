@@ -47,9 +47,19 @@ export default function CartItem({
               <Trash2 size={14} />
             </button>
           </div>
-          <p className="text-xs text-[#666] mt-1">
-            Size: <span className="font-semibold text-[#0A0A0A]">{size}</span>
-          </p>
+          <div className="flex items-center gap-2 text-xs text-[#666] mt-1">
+            <span>Size: <span className="font-semibold text-[#0A0A0A]">{size}</span></span>
+            {item.color && (
+              <span className="inline-flex items-center gap-1.5 pl-2 border-l border-[#E8E8E8]">
+                <span>Shade:</span>
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-[#CCC] inline-block shrink-0"
+                  style={{ backgroundColor: item.color }}
+                  title={item.color}
+                />
+              </span>
+            )}
+          </div>
           <p className="text-sm font-medium text-[#0A0A0A] mt-1">
             {formatPrice(p.price)}
           </p>
