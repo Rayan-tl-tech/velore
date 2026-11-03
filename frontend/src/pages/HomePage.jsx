@@ -56,6 +56,13 @@ export default function HomePage({
             stock: liveItem.stock ?? preset?.stock,
             image: liveItem.image || preset?.image,
             category: liveItem.category || preset?.category,
+            newArrival:
+              liveItem.newArrival !== undefined
+                ? Boolean(liveItem.newArrival)
+                : Boolean(preset?.collection === 'new-arrivals'),
+            colors: Array.isArray(liveItem.colors)
+              ? liveItem.colors
+              : (preset?.colors || []),
           };
         });
         setCatalog(combined);
@@ -67,7 +74,9 @@ export default function HomePage({
     };
   }, []);
 
-  const newArrivals = catalog.filter((p) => p.collection === 'new-arrivals');
+  const newArrivals = catalog.filter(
+    (p) => p.newArrival === true || (p.newArrival === undefined && p.collection === 'new-arrivals')
+  );
 
   return (
     <div className="min-h-screen bg-white">

@@ -393,10 +393,15 @@ export default function Products() {
                         e.target.src = 'https://images.unsplash.com/photo-1598554747436-c9293d6a588f?w=600&h=800&fit=crop';
                       }}
                     />
-                    <div className="absolute top-3 left-3">
+                    <div className="absolute top-3 left-3 flex flex-col gap-1 items-start">
                       <span className={`inline-block px-2.5 py-1 text-[10px] tracking-[0.15em] uppercase font-semibold ${badgeStyle}`}>
                         {statusLabel}
                       </span>
+                      {Boolean(product.newArrival) && (
+                        <span className="inline-block px-2 py-0.5 text-[9px] tracking-[0.15em] uppercase font-bold bg-white/95 text-[#0A0A0A] shadow-sm">
+                          New Arrival
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -405,7 +410,22 @@ export default function Products() {
                     <div>
                       <p className="text-[11px] tracking-[0.15em] uppercase text-[#666] mb-1">{catName}</p>
                       <h3 className="font-serif-display text-lg text-[#0A0A0A] mb-1 line-clamp-1">{product.name}</h3>
-                      <p className="text-sm font-semibold text-[#0A0A0A] mb-4">{formatPrice(product.price)}</p>
+                      <p className="text-sm font-semibold text-[#0A0A0A] mb-2">{formatPrice(product.price)}</p>
+                      {Array.isArray(product.colors) && product.colors.length > 0 && (
+                        <div className="flex items-center gap-1.5 mb-3">
+                          {product.colors.slice(0, 5).map((col, cIdx) => (
+                            <span
+                              key={cIdx}
+                              className="w-2.5 h-2.5 rounded-full border border-black/15 shrink-0"
+                              style={{ backgroundColor: col }}
+                              title={col}
+                            />
+                          ))}
+                          {product.colors.length > 5 && (
+                            <span className="text-[10px] text-[#888]">+{product.colors.length - 5}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="pt-4 border-t border-[#F0F0F0]">
@@ -497,8 +517,30 @@ export default function Products() {
                               }}
                             />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium mb-0.5 text-[#0A0A0A] truncate max-w-xs">{product.name}</p>
+                              <div className="flex items-center gap-2 mb-0.5">
+                                <p className="text-sm font-medium text-[#0A0A0A] truncate max-w-xs">{product.name}</p>
+                                {Boolean(product.newArrival) && (
+                                  <span className="px-1.5 py-0.5 bg-[#0A0A0A] text-white text-[9px] uppercase tracking-wider font-semibold shrink-0">
+                                    New
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-[#666] line-clamp-1 max-w-xs">{product.description || 'VÉLOR Collection Piece'}</p>
+                              {Array.isArray(product.colors) && product.colors.length > 0 && (
+                                <div className="flex items-center gap-1 mt-1">
+                                  {product.colors.slice(0, 4).map((col, cIdx) => (
+                                    <span
+                                      key={cIdx}
+                                      className="w-2 h-2 rounded-full border border-black/15 shrink-0"
+                                      style={{ backgroundColor: col }}
+                                      title={col}
+                                    />
+                                  ))}
+                                  {product.colors.length > 4 && (
+                                    <span className="text-[9px] text-[#888]">+{product.colors.length - 4}</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>

@@ -265,9 +265,19 @@ export default function OrdersModal({ isOpen, onClose, isAdminMode = false }) {
                               </div>
                               <div>
                                 <p className="text-xs font-medium text-[#0A0A0A]">{itemName}</p>
-                                <p className="text-[10px] text-[#777]">
-                                  Qty: {item.quantity} {item.size ? `· Size ${item.size}` : ''}
-                                </p>
+                                <div className="flex items-center gap-1.5 text-[10px] text-[#777] mt-0.5">
+                                  <span>Qty: {item.quantity} {item.size ? `· Size ${item.size}` : ''}</span>
+                                  {item.color && (
+                                    <span className="inline-flex items-center gap-1 pl-1.5 border-l border-[#E8E8E8]">
+                                      <span
+                                        className="w-2 h-2 rounded-full border border-black/10 inline-block shrink-0 shadow-xs"
+                                        style={{ backgroundColor: item.color }}
+                                        title={item.color}
+                                      />
+                                      <span className="font-mono text-[9px] text-[#666] uppercase">{item.color}</span>
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <span className="text-xs font-semibold text-[#0A0A0A]">

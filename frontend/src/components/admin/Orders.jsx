@@ -316,7 +316,19 @@ export default function Orders() {
                           )}
                           <div>
                             <p className="font-medium text-[#0A0A0A]">{prodName}</p>
-                            <p className="text-xs text-[#666]">Size: {it.size || 'M'} · Qty: {it.quantity || 1}</p>
+                            <div className="flex items-center gap-2 text-xs text-[#666] mt-0.5">
+                              <span>Size: {it.size || 'M'} · Qty: {it.quantity || 1}</span>
+                              {it.color && (
+                                <span className="inline-flex items-center gap-1.5 pl-2 border-l border-[#E8E8E8]">
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full border border-black/10 inline-block shrink-0 shadow-xs"
+                                    style={{ backgroundColor: it.color }}
+                                    title={it.color}
+                                  />
+                                  <span className="font-mono text-[11px] text-[#555] uppercase">{it.color}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <p className="font-medium">{formatPrice(it.price * (it.quantity || 1))}</p>

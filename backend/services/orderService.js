@@ -89,6 +89,7 @@ export const createOrder = async (orderPayload, authenticatedUser = null) => {
       productId: it.product?._id ? it.product._id : it.product,
       quantity: it.quantity,
       size: it.size || 'M',
+      color: it.color || null,
     }));
   } else {
     const err = new Error('Order items are required');
@@ -112,6 +113,7 @@ export const createOrder = async (orderPayload, authenticatedUser = null) => {
       const pId = rawItem.productId || rawItem.product?._id || rawItem.product;
       const qty = parseInt(rawItem.quantity, 10);
       const size = String(rawItem.size || 'M').trim();
+      const color = rawItem.color ? String(rawItem.color).trim() : null;
 
       if (!pId || !mongoose.Types.ObjectId.isValid(pId)) {
         throw new Error(`Invalid product identifier: ${pId}`);
@@ -152,6 +154,7 @@ export const createOrder = async (orderPayload, authenticatedUser = null) => {
         quantity: qty,
         price: authoritativePrice,
         size,
+        color,
       });
     }
 

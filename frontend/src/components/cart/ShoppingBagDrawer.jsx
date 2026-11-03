@@ -144,24 +144,26 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
   const shippingFee = isAlgiers ? 500 : 800;
   const totalOrderPrice = subtotal + shippingFee;
 
-  const handleQuantityChange = async (productId, size, currentQty, delta) => {
+  const handleQuantityChange = async (productId, size, currentQty, delta, color = null) => {
     const newQty = currentQty + delta;
+    const itemKey = `${productId}-${size}-${color || 'default'}`;
     if (newQty < 1) {
-      handleRemove(productId, size);
+      handleRemove(productId, size, color);
       return;
     }
-    setUpdatingId(`${productId}-${size}`);
+    setUpdatingId(itemKey);
     try {
-      await updateQuantity(productId, newQty, size);
+      await updateQuantity(productId, newQty, size, color);
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const handleRemove = async (productId, size) => {
-    setUpdatingId(`${productId}-${size}`);
+  const handleRemove = async (productId, size, color = null) => {
+    const itemKey = `${productId}-${size}-${color || 'default'}`;
+    setUpdatingId(itemKey);
     try {
-      await removeFromCart(productId, size);
+      await removeFromCart(productId, size, color);
     } finally {
       setUpdatingId(null);
     }
@@ -285,8 +287,8 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                       const p = item.product || {};
                       const pId = p._id || p.id;
                       const size = item.size || 'M';
-                      const itemKey = `${pId}-${size}-${idx}`;
-                      const isUpdating = updatingId === `${pId}-${size}`;
+                      const itemKey = `${pId}-${size}-${item.color || 'none'}-${idx}`;
+                      const isUpdating = updatingId === `${pId}-${size}-${item.color || 'default'}`;
 
                       return (
                         <CartItem
@@ -294,9 +296,9 @@ export default function ShoppingBagDrawer({ onOpenAuth, onOrderPlaced }) {
                           item={item}
                           isUpdating={isUpdating}
                           onQuantityChange={(delta) =>
-                            handleQuantityChange(pId, size, item.quantity, delta)
+                            handleQuantityChange(pId, size, item.quantity, delta, item.color)
                           }
-                          onRemove={() => handleRemove(pId, size)}
+                          onRemove={() => handleRemove(pId, size, item.color)}
                         />
                       );
                     })}

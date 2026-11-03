@@ -70,7 +70,13 @@ export function CartProvider({ children }) {
             for (const item of localItems) {
               const pId = item.product?._id || item.product?.id;
               if (pId) {
-                await addToCartApi(pId, item.quantity || 1, item.size || 'M').catch(() => {});
+                await addToCartApi(
+                  pId,
+                  item.quantity || 1,
+                  item.size || 'M',
+                  item.product?.name || '',
+                  item.color || null
+                ).catch(() => {});
               }
             }
             localStorage.removeItem(GUEST_CART_KEY);
@@ -121,11 +127,18 @@ export function CartProvider({ children }) {
       const qty = Math.max(1, parseInt(quantity, 10) || 1);
       const size = String(options.size || 'M').trim();
       const productObj = options.product || null;
+      const targetColor = options.color ? String(options.color).trim() : null;
 
       if (isAuthenticated) {
         setLoading(true);
         try {
-          const updated = await addToCartApi(productId, qty, size, productObj?.name || '');
+          const updated = await addToCartApi(
+            productId,
+            qty,
+            size,
+            productObj?.name || '',
+            targetColor
+          );
           setBackendCart(updated);
           if (openDrawer) setIsBagOpen(true);
           return updated;
@@ -135,17 +148,17 @@ export function CartProvider({ children }) {
       } else {
         // Guest Cart in LocalStorage
         const current = [...guestCart];
-        const matchIdx = current.findIndex(
-          (it) =>
+        const matchIdx = current.findIndex((it) => {
+          const itColor = it.color ? String(it.color).trim() : null;
+          return (
             (it.product?._id === productId || it.product?.id === productId) &&
-            (it.size || 'M') === size
-        );
+            (it.size || 'M') === size &&
+            itColor === targetColor
+          );
+        });
 
         if (matchIdx > -1) {
           current[matchIdx].quantity += qty;
-          if (options.color) {
-            current[matchIdx].color = options.color;
-          }
         } else {
           current.push({
             product: productObj || {
@@ -156,7 +169,7 @@ export function CartProvider({ children }) {
             },
             quantity: qty,
             size,
-            color: options.color || null,
+            color: targetColor,
           });
         }
         saveGuestCart(current);
@@ -169,12 +182,13 @@ export function CartProvider({ children }) {
 
   // Update item quantity
   const updateQuantity = useCallback(
-    async (productId, newQuantity, size = 'M') => {
+    async (productId, newQuantity, size = 'M', color = undefined) => {
       const qty = Math.max(1, parseInt(newQuantity, 10) || 1);
+      const targetColor = color ? String(color).trim() : null;
       if (isAuthenticated) {
         setLoading(true);
         try {
-          const updated = await updateCartItemApi(productId, qty, size);
+          const updated = await updateCartItemApi(productId, qty, size, targetColor);
           setBackendCart(updated);
           return updated;
         } finally {
@@ -182,9 +196,12 @@ export function CartProvider({ children }) {
         }
       } else {
         const updated = guestCart.map((it) => {
+          const itColor = it.color ? String(it.color).trim() : null;
+          const matchColor = color !== undefined ? itColor === targetColor : true;
           if (
             (it.product?._id === productId || it.product?.id === productId) &&
-            (it.size || 'M') === (size || 'M')
+            (it.size || 'M') === (size || 'M') &&
+            matchColor
           ) {
             return { ...it, quantity: qty };
           }
@@ -199,11 +216,12 @@ export function CartProvider({ children }) {
 
   // Remove item from cart
   const removeFromCart = useCallback(
-    async (productId, size = 'M') => {
+    async (productId, size = 'M', color = undefined) => {
+      const targetColor = color ? String(color).trim() : null;
       if (isAuthenticated) {
         setLoading(true);
         try {
-          const res = await removeFromCartApi(productId, size);
+          const res = await removeFromCartApi(productId, size, targetColor);
           const updated = res.cart || res;
           setBackendCart(updated);
           return updated;
@@ -211,13 +229,15 @@ export function CartProvider({ children }) {
           setLoading(false);
         }
       } else {
-        const updated = guestCart.filter(
-          (it) =>
-            !(
-              (it.product?._id === productId || it.product?.id === productId) &&
-              (it.size || 'M') === (size || 'M')
-            )
-        );
+        const updated = guestCart.filter((it) => {
+          const itColor = it.color ? String(it.color).trim() : null;
+          const matchColor = color !== undefined ? itColor === targetColor : true;
+          return !(
+            (it.product?._id === productId || it.product?.id === productId) &&
+            (it.size || 'M') === (size || 'M') &&
+            matchColor
+          );
+        });
         saveGuestCart(updated);
         return updated;
       }
@@ -236,6 +256,7 @@ export function CartProvider({ children }) {
             productId: it.product?._id || it.product?.id,
             quantity: it.quantity,
             size: it.size || 'M',
+            color: it.color || null,
           })),
         };
 

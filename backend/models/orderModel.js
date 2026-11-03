@@ -32,6 +32,12 @@ const orderItemSchema = new mongoose.Schema({
   size: {
     type: String,
     default: 'M'
+  },
+
+  color: {
+    type: String,
+    default: null,
+    trim: true
   }
 }, { _id: false });
 

@@ -10,8 +10,8 @@ import {
 export const addToCartController = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { productId, quantity, size = 'M', productName } = req.body;
-    const cart = await addToCart(userId, productId, quantity, size, productName);
+    const { productId, quantity, size = 'M', productName, color } = req.body;
+    const cart = await addToCart(userId, productId, quantity, size, productName, color);
     res.status(200).json(cart);
   } catch (error) {
     next(error);
@@ -34,8 +34,8 @@ export const updateCartItemController = async (req, res, next) => {
   try {
     const userId = req.user._id;
     const { productId } = req.params;
-    const { quantity, size } = req.body;
-    const cart = await updateCartItem(userId, productId, quantity, size);
+    const { quantity, size, color } = req.body;
+    const cart = await updateCartItem(userId, productId, quantity, size, color);
     res.status(200).json(cart);
   } catch (error) {
     next(error);
@@ -48,7 +48,8 @@ export const removeFromCartController = async (req, res, next) => {
     const userId = req.user._id;
     const { productId } = req.params;
     const size = req.query.size || req.body?.size;
-    const cart = await removeFromCart(userId, productId, size);
+    const color = req.query.color || req.body?.color;
+    const cart = await removeFromCart(userId, productId, size, color);
     res.status(200).json({ message: 'Product removed from cart', cart });
   } catch (error) {
     next(error);

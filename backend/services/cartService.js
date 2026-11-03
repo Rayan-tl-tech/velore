@@ -35,16 +35,25 @@ const validateQuantity = (quantity) => {
   return qty;
 };
 
-const matchesItem = (item, productId, size) => {
+const matchesItem = (item, productId, size, color = undefined) => {
   if (!item || !item.product) return false;
   const id = item.product._id ? item.product._id.toString() : item.product.toString();
   const sameId = id === productId.toString();
-  if (!size) return sameId;
-  return sameId && (item.size || 'M') === String(size).trim();
+  if (!sameId) return false;
+  if (size) {
+    const sameSize = (item.size || 'M') === String(size).trim();
+    if (!sameSize) return false;
+  }
+  if (color !== undefined) {
+    const itemColor = item.color ? String(item.color).trim() : null;
+    const targetColor = color ? String(color).trim() : null;
+    return itemColor === targetColor;
+  }
+  return true;
 };
 
 // Ajouter un produit au panier
-export const addToCart = async (userId, productId, quantity = 1, size = 'M', productName = '') => {
+export const addToCart = async (userId, productId, quantity = 1, size = 'M', productName = '', color = null) => {
   validateUserId(userId);
 
   validateProductId(productId);
@@ -52,6 +61,7 @@ export const addToCart = async (userId, productId, quantity = 1, size = 'M', pro
 
   const qty = validateQuantity(quantity);
   const cleanSize = String(size || 'M').trim();
+  const cleanColor = color ? String(color).trim() : null;
 
   const product = await Product.findById(targetId);
   if (!product) {
@@ -66,13 +76,18 @@ export const addToCart = async (userId, productId, quantity = 1, size = 'M', pro
   }
 
   const existingItemIndex = cart.items.findIndex((item) =>
-    matchesItem(item, targetId, cleanSize)
+    matchesItem(item, targetId, cleanSize, cleanColor)
   );
 
   if (existingItemIndex > -1) {
     cart.items[existingItemIndex].quantity += qty;
   } else {
-    cart.items.push({ product: targetId, quantity: qty, size: cleanSize });
+    cart.items.push({
+      product: targetId,
+      quantity: qty,
+      size: cleanSize,
+      color: cleanColor,
+    });
   }
 
   await cart.save();
@@ -99,7 +114,7 @@ export const getCart = async (userId) => {
 };
 
 // Mettre à jour la quantité d'un produit dans le panier
-export const updateCartItem = async (userId, productId, quantity, size = null) => {
+export const updateCartItem = async (userId, productId, quantity, size = null, color = undefined) => {
   validateUserId(userId);
   validateProductId(productId);
 
@@ -113,7 +128,7 @@ export const updateCartItem = async (userId, productId, quantity, size = null) =
   }
 
   const itemIndex = cart.items.findIndex((item) =>
-    matchesItem(item, productId, size)
+    matchesItem(item, productId, size, color)
   );
 
   if (itemIndex === -1) {
@@ -128,7 +143,7 @@ export const updateCartItem = async (userId, productId, quantity, size = null) =
 };
 
 // Supprimer un produit du panier
-export const removeFromCart = async (userId, productId, size = null) => {
+export const removeFromCart = async (userId, productId, size = null, color = undefined) => {
   validateUserId(userId);
   validateProductId(productId);
 
@@ -140,7 +155,7 @@ export const removeFromCart = async (userId, productId, size = null) => {
   }
 
   const itemIndex = cart.items.findIndex((item) =>
-    matchesItem(item, productId, size)
+    matchesItem(item, productId, size, color)
   );
 
   if (itemIndex === -1) {

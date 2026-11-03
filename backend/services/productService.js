@@ -4,6 +4,54 @@ import Category from '../models/categoryModel.js';
 import { uploadImage, deleteImage } from './storageService.js';
 import { isValidObjectId } from '../middlewares/validateObjectId.js';
 
+/**
+ * Safely parse and sanitize colors input (array or serialized string)
+ * Keeps strings, trims, deduplicates, and limits length.
+ */
+const parseColors = (input) => {
+  if (input === undefined || input === null) return [];
+  let rawList = [];
+  if (Array.isArray(input)) {
+    rawList = input;
+  } else if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) return [];
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        rawList = parsed;
+      } else if (typeof parsed === 'string') {
+        rawList = [parsed];
+      }
+    } catch {
+      rawList = trimmed.split(',').map((s) => s.trim());
+    }
+  }
+
+  const seen = new Set();
+  const cleaned = [];
+  for (const item of rawList) {
+    if (typeof item !== 'string') continue;
+    const cleanItem = item.trim();
+    if (!cleanItem || cleanItem.length > 50) continue;
+    const lower = cleanItem.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      cleaned.push(cleanItem);
+      if (cleaned.length >= 20) break;
+    }
+  }
+  return cleaned;
+};
+
+/**
+ * Safely parse boolean for newArrival
+ */
+const parseNewArrival = (input) => {
+  if (input === true || input === 'true' || input === 1 || input === '1') return true;
+  return false;
+};
+
 // Créer un produit
 export const createProduct = async (data, file) => {
   if (!data || typeof data !== 'object') {
@@ -74,6 +122,8 @@ export const createProduct = async (data, file) => {
   }
 
   const cleanDescription = typeof description === 'string' ? description.trim() : '';
+  const newArrival = parseNewArrival(data.newArrival);
+  const colors = parseColors(data.colors);
 
   const newProduct = new productModel({
     name: trimmedName,
@@ -82,6 +132,8 @@ export const createProduct = async (data, file) => {
     stock: parsedStock,
     image,
     category: categoryId,
+    newArrival,
+    colors,
   });
 
   const savedProduct = await newProduct.save();
@@ -200,6 +252,14 @@ export const updateProduct = async (id, data, file) => {
     if (existingProduct.image && newImageUrl && existingProduct.image !== newImageUrl) {
       await deleteImage(existingProduct.image);
     }
+  }
+
+  if (data.newArrival !== undefined) {
+    updateData.newArrival = parseNewArrival(data.newArrival);
+  }
+
+  if (data.colors !== undefined) {
+    updateData.colors = parseColors(data.colors);
   }
 
   return await productModel

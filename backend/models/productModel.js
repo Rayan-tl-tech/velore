@@ -29,6 +29,14 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
     required: true
+  },
+  newArrival: {
+    type: Boolean,
+    default: false
+  },
+  colors: {
+    type: [String],
+    default: []
   }
 }, {
   timestamps: true

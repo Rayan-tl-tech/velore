@@ -17,8 +17,10 @@ export const getCart = async () => {
  * @param {string} productId - MongoDB ObjectId of the product
  * @param {number} quantity - Quantity to add (min 1)
  */
-export const addToCart = async (productId, quantity = 1, size = 'M', productName = '') => {
-  const response = await apiClient.post('/cart', { productId, quantity, size, productName });
+export const addToCart = async (productId, quantity = 1, size = 'M', productName = '', color = null) => {
+  const payload = { productId, quantity, size, productName };
+  if (color) payload.color = String(color).trim();
+  const response = await apiClient.post('/cart', payload);
   return response.data;
 };
 
@@ -27,8 +29,10 @@ export const addToCart = async (productId, quantity = 1, size = 'M', productName
  * PUT /api/cart/:productId
  * Requires: Bearer token
  */
-export const updateCartItem = async (productId, quantity) => {
-  const response = await apiClient.put(`/cart/${productId}`, { quantity });
+export const updateCartItem = async (productId, quantity, size = 'M', color = undefined) => {
+  const payload = { quantity, size };
+  if (color !== undefined) payload.color = color ? String(color).trim() : null;
+  const response = await apiClient.put(`/cart/${productId}`, payload);
   return response.data;
 };
 
@@ -37,8 +41,11 @@ export const updateCartItem = async (productId, quantity) => {
  * DELETE /api/cart/:productId
  * Requires: Bearer token
  */
-export const removeFromCart = async (productId) => {
-  const response = await apiClient.delete(`/cart/${productId}`);
+export const removeFromCart = async (productId, size = 'M', color = undefined) => {
+  const params = {};
+  if (size) params.size = size;
+  if (color !== undefined && color !== null) params.color = String(color).trim();
+  const response = await apiClient.delete(`/cart/${productId}`, { params });
   return response.data;
 };
 
